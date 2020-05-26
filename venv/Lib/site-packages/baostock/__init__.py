@@ -1,0 +1,16 @@
+# -*- coding:utf-8 -*-
+"""
+发布方法
+@author: baostock.com
+@group : baostock.com
+@contact: baostock@163.com
+"""
+import baostock.common.contants as cons
+__version__ = cons.BAOSTOCK_CLIENT_VERSION
+__author__ = cons.BAOSTOCK_AUTHOR
+
+# login/logout
+from baostock.login.loginout import (login, logout)
+
+# history data
+from baostock.security.history import (query_history_k_data)
