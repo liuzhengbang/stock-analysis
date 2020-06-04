@@ -1,6 +1,5 @@
 import baostock as bs
 import pandas as pd
-import time
 
 
 def query_day_k_data(code):
@@ -22,3 +21,5 @@ def query_day_k_data(code):
 
     result.to_csv(code+"_day_k_data.csv", index=False)
     print(result)
+
+    return result
