@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 import pandas as pd
-from stockQuery.individualStock import query_day_k_data
+from stock_query.stock_query import query_day_k_data
 
 
 def get_x():

@@ -1,10 +1,4 @@
-from dataPool.analysisData import *
-from linearRegression.linear import calc_linear
-from stockQuery.stockBasic import *
+from stock_query.stock import prepare_data
 
-# login()
-#
-# logout()
+prepare_data(["sh.600000"])
 
-
-calc_linear()

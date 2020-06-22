@@ -1,13 +1,13 @@
 import torch
 
-from dataPool.analysisData import *
-from linearRegression.linearRegressionModel import LinearRegressionModel
+from data_pool.analysis_data import *
+from linear_regression.linearRegressionModel import LinearRegressionModel
 
 
 def calc_linear():
     # x_data = get_x()
     x_data = torch.Tensor([[3.0, 2.0], [6.0, 5.0], [9.0, 7.0], [1, 3], [3, 10],[10,3]])
-    print(x_data)
+    print("grad", x_data.grad)
     print(x_data.size())
     # x1_data = get_x()
     # print(x1_data.size())
@@ -17,7 +17,7 @@ def calc_linear():
     our_model = LinearRegressionModel()
     criterion = torch.nn.MSELoss(size_average=False)
     optimizer = torch.optim.SGD(our_model.parameters(), lr=0.001)
-    for epoch in range(500):
+    for epoch in range(10000):
         # Forward pass: Compute predicted y by passing
         # x to the model
         pred_y = our_model(x_data)
@@ -36,6 +36,7 @@ def calc_linear():
     print(new_var)
     print(new_var.size())
     pred_y = our_model(new_var)
+    print(our_model)
     print(pred_y)
     print("predict (after training)",  our_model(new_var).item())
 
