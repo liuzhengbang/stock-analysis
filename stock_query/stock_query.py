@@ -3,7 +3,7 @@ import baostock as bs
 from csv_utils import write_individual, get_csv_latest_date, get_next_day_str, getTodayStr
 
 
-def query_day_k_data(code, start="2010-01-01", append=True):
+def query_day_k_data(code, start="2000-01-01", append=True):
     if append:
         current_end = get_csv_latest_date(code)
 

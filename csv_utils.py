@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 
+import numpy
 import pandas as pd
 
 STOCK_DATA_DIR_BASE = "stock_data" + "/"
@@ -20,6 +21,11 @@ def write_individual(code, rs, append=False):
         result.to_csv(individual_name(code), index=False)
     # print(result)
     return result
+
+
+def read_individual(code, cols=None):
+    ret = pd.read_csv(individual_name(code), usecols=cols, dtype=numpy.float32)
+    return ret
 
 
 def individual_name(code):
