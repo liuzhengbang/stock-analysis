@@ -1,64 +1,101 @@
+import time
+
 import numpy as np
 import torch
 import torch.nn as nn
 
+device = torch.device('cuda:0')
 
-class LogisticRegression(nn.Module):
-    def __init__(self, input_size, num_classes):
-        super(LogisticRegression, self).__init__()
-        self.lr = nn.Linear(input_size, num_classes)
-        self.sm = nn.Sigmoid()
+
+class Net(nn.Module):
+    def __init__(self, input_size):
+        """
+        In the constructor we instantiate one nn.Linear modules and assign them as
+        member variables.
+        """
+        super(Net, self).__init__()
+        self.linear1 = torch.nn.Linear(input_size, 30)
+        self.linear2 = torch.nn.Linear(30, 100)
+        self.linear3 = torch.nn.Linear(100, 1)
+        self.tanh = torch.nn.Tanh()
+        self.sm = torch.nn.Sigmoid()
 
     def forward(self, x):
-        x = self.lr(x)
-        x = self.sm(x)
-        return x
+        """
+        In the forward function we accept a Tensor of input data and we must return
+        a Tensor of output data. We can use Modules defined in the constructor as
+        well as arbitrary operators on Tensors.
+        """
+        pred = self.linear1(x)
+        pred = self.tanh(pred)
+        pred = self.linear2(pred)
+        pred = self.tanh(pred)
+        pred = self.linear3(pred)
+        pred = self.sm(pred)
+        return pred
+
+    def weight(self):
+        return self.linear1.weight, self.linear1.bias, self.linear2.weight, self.linear2.bias
 
 
-def model(x_train, y_train, x_test, y_test, num_iterations=2000, learning_rate=0.05, print_cost=False):
+def train_model(x_train, y_train, x_test, y_test, num_iterations=2000, learning_rate=0.9, print_cost=False):
+
     # print(x_train.shape)
-    logistic_model = LogisticRegression(x_train.shape[1], 1)
+    model = Net(x_train.shape[1]).to(device=device)
 
     # Loss and Optimizer
     # Softmax is internally computed.
     # Set parameters to be updated.
     criterion = nn.BCELoss()
-    optimizer = torch.optim.SGD(logistic_model.parameters(), lr=learning_rate)
+    optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
 
+    x_train = x_train.to(device=device)
+
+    # print("x", dataset_train_x.shape)
+    y_train = y_train.to(device=device)
+
+    x_test = x_test.to(device=device)
+    y_test = y_test.to(device=device)
     # Training the Model
     for epoch in range(num_iterations):
-        dataset_train_x = x_train
 
-        # print("x", dataset_train_x.shape)
-        dataset_train_y = y_train
         # print("y", dataset_train_y.shape)
         # Forward + Backward + Optimize
 
-        train_predict_out = logistic_model(dataset_train_x)
-        cost = criterion(train_predict_out, dataset_train_y)
-        # print_loss = cost.data.item()
+        train_predict_out = model(x_train)
+        loss = criterion(train_predict_out, y_train)
+        # print_loss = loss.data.item()
         # mask = train_predict_out.ge(0.5).float()
         # correct = (mask == dataset_train_y).sum()
         # acc = correct.item() / dataset_train_x.size(0)
         optimizer.zero_grad()
-        cost.backward()
+        loss.backward()
         optimizer.step()
 
         if print_cost and epoch % 100 == 0:
-            print("Cost after iteration %i: %f" % (epoch, cost))
+            print("Loss after iteration %i: %f" % (epoch, loss))
             # print('acc is {:.4f}'.format(acc))
 
-    y_prediction_test = predict(logistic_model, x_test)
-    y_prediction_train = predict(logistic_model, x_train)
-    print("train accuracy: {} %".format(100 - np.mean(np.abs(y_prediction_train - y_train.numpy())) * 100))
-    print("test accuracy: {} %".format(100 - np.mean(np.abs(y_prediction_test - y_test.numpy())) * 100))
+    y_prediction_test = predict(model, x_test)
+    y_prediction_train = predict(model, x_train)
+    print(y_prediction_train.shape, y_train.shape)
+    print("train accuracy: {} %".format(100 - torch.mean(torch.abs(torch.sub(y_prediction_train, y_train))) * 100))
+    print("test accuracy: {} %".format(100 - torch.mean(torch.abs(torch.sub(y_prediction_test, y_test))) * 100))
 
-    return logistic_model
+    l1_w, l1_b, l2_w, l2_b = model.weight()
+    # print("l1 weight", l1_w)
+    # print("l1 bias", l1_b)
+    # print("l2 weight", l2_w)
+    # print("l2 bias", l2_b)
+    str_time = time.strftime('%Y-%m-%d-%H-%M-%S', time.localtime(time.time()))
+    torch.save(model, str_time + "-model.pt")
+
+    return model
 
 
 def predict(module, source):
     m = source.shape[0]
-    y_prediction = np.zeros((m, 1))
+    y_prediction = torch.zeros((m, 1), device=device)
     red = module.forward(source)
     for i in range(red.shape[0]):
 
