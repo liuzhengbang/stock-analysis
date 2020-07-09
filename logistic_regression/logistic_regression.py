@@ -78,9 +78,17 @@ def train_model(x_train, y_train, x_test, y_test, num_iterations=2000, learning_
 
     y_prediction_test = predict(model, x_test)
     y_prediction_train = predict(model, x_train)
-    print(y_prediction_train.shape, y_train.shape)
-    print("train accuracy: {} %".format(100 - torch.mean(torch.abs(torch.sub(y_prediction_train, y_train))) * 100))
-    print("test accuracy: {} %".format(100 - torch.mean(torch.abs(torch.sub(y_prediction_test, y_test))) * 100))
+    # print(y_prediction_train.shape, y_train.shape)
+    # print("train accuracy: {} %".format(100 - torch.mean(torch.abs(torch.sub(y_prediction_train, y_train))) * 100))
+    # print("test accuracy: {} %".format(100 - torch.mean(torch.abs(torch.sub(y_prediction_test, y_test))) * 100))
+
+    train_accuracy = 100 - torch.mean(torch.abs(torch.sub(y_prediction_train, y_train))) * 100
+    train_accuracy = round(train_accuracy.item(), 2)
+    test_accuracy = 100 - torch.mean(torch.abs(torch.sub(y_prediction_test, y_test))) * 100
+    test_accuracy = round(test_accuracy.item(), 2)
+
+    print("train accuracy", train_accuracy, "%")
+    print("test accuracy", test_accuracy, "%")
 
     l1_w, l1_b, l2_w, l2_b = model.weight()
     # print("l1 weight", l1_w)
@@ -88,7 +96,7 @@ def train_model(x_train, y_train, x_test, y_test, num_iterations=2000, learning_
     # print("l2 weight", l2_w)
     # print("l2 bias", l2_b)
     str_time = time.strftime('%Y-%m-%d-%H-%M-%S', time.localtime(time.time()))
-    torch.save(model, str_time + "-model.pt")
+    torch.save(model, str_time + "--" + str(train_accuracy) + "-" + str(test_accuracy) + "-model.pt")
 
     return model
 
