@@ -3,44 +3,14 @@ import time
 import numpy as np
 import torch
 import torch.nn as nn
-
+from train.net import NeuralNetwork as Net
 device = torch.device('cuda:0')
-
-
-class Net(nn.Module):
-    def __init__(self, input_size):
-        """
-        In the constructor we instantiate one nn.Linear modules and assign them as
-        member variables.
-        """
-        super(Net, self).__init__()
-        self.linear1 = torch.nn.Linear(input_size, 30)
-        self.linear2 = torch.nn.Linear(30, 100)
-        self.linear3 = torch.nn.Linear(100, 1)
-        self.tanh = torch.nn.Tanh()
-        self.sm = torch.nn.Sigmoid()
-
-    def forward(self, x):
-        """
-        In the forward function we accept a Tensor of input data and we must return
-        a Tensor of output data. We can use Modules defined in the constructor as
-        well as arbitrary operators on Tensors.
-        """
-        pred = self.linear1(x)
-        pred = self.tanh(pred)
-        pred = self.linear2(pred)
-        pred = self.tanh(pred)
-        pred = self.linear3(pred)
-        pred = self.sm(pred)
-        return pred
-
-    def weight(self):
-        return self.linear1.weight, self.linear1.bias, self.linear2.weight, self.linear2.bias
 
 
 def train_model(x_train, y_train, x_test, y_test, num_iterations=2000, learning_rate=0.9, print_cost=False):
 
     # print(x_train.shape)
+
     model = Net(x_train.shape[1]).to(device=device)
 
     # Loss and Optimizer
@@ -50,12 +20,10 @@ def train_model(x_train, y_train, x_test, y_test, num_iterations=2000, learning_
     optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
 
     x_train = x_train.to(device=device)
-
-    # print("x", dataset_train_x.shape)
     y_train = y_train.to(device=device)
-
     x_test = x_test.to(device=device)
     y_test = y_test.to(device=device)
+
     # Training the Model
     for epoch in range(num_iterations):
 
