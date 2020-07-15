@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 
 from csv_utils import read_individual
-from stock_query.stock_query import query_day_k_data
+from stock_query.stock_query import query_individual_day_k_data
 
 
 def get_x():

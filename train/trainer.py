@@ -3,7 +3,7 @@ import time
 import numpy as np
 import torch
 import torch.nn as nn
-from train.net import NeuralNetwork as Net
+from train.net import LSTMNeuralNetwork as Net
 device = torch.device('cuda:0')
 
 
@@ -19,10 +19,17 @@ def train_model(x_train, y_train, x_test, y_test, num_iterations=2000, learning_
     criterion = nn.BCELoss()
     optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
 
+    print(x_train.shape, x_test.shape)
+    x_train = x_train.reshape(3238, 1, 8)
     x_train = x_train.to(device=device)
+    y_train = y_train.reshape(3238, 1, 1)
     y_train = y_train.to(device=device)
+    x_test = x_test.reshape(2338, 1, 8)
     x_test = x_test.to(device=device)
+    y_test = y_test.reshape(2338, 1, 1)
     y_test = y_test.to(device=device)
+    print(x_train.shape)
+    # x_train=x_train.
 
     # Training the Model
     for epoch in range(num_iterations):
@@ -58,7 +65,7 @@ def train_model(x_train, y_train, x_test, y_test, num_iterations=2000, learning_
     print("train accuracy", train_accuracy, "%")
     print("test accuracy", test_accuracy, "%")
 
-    l1_w, l1_b, l2_w, l2_b = model.weight()
+    # l1_w, l1_b, l2_w, l2_b = model.weight()
     # print("l1 weight", l1_w)
     # print("l1 bias", l1_b)
     # print("l2 weight", l2_w)

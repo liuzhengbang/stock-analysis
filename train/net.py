@@ -10,11 +10,11 @@ class NeuralNetwork(nn.Module):
         member variables.
         """
         super(NeuralNetwork, self).__init__()
-        self.linear1 = torch.nn.Linear(input_size, 30)
-        self.linear2 = torch.nn.Linear(30, 100)
-        self.linear3 = torch.nn.Linear(100, 1)
-        self.tanh = torch.nn.Tanh()
-        self.sm = torch.nn.Sigmoid()
+        self.linear1 = nn.Linear(input_size, 30)
+        self.linear2 = nn.Linear(30, 100)
+        self.linear3 = nn.Linear(100, 1)
+        self.tanh = nn.Tanh()
+        self.sm = nn.Sigmoid()
 
     def forward(self, x):
         """
@@ -32,3 +32,30 @@ class NeuralNetwork(nn.Module):
 
     def weight(self):
         return self.linear1.weight, self.linear1.bias, self.linear2.weight, self.linear2.bias
+
+
+
+class LSTMNeuralNetwork(nn.Module):
+    def __init__(self, input_size):
+
+        super(LSTMNeuralNetwork, self).__init__()
+        self.rnn = torch.nn.LSTM(input_size, 300, 2, batch_first=True)
+        self.linear1 = torch.nn.Linear(300, 30)
+        self.linear2 = torch.nn.Linear(30, 100)
+        self.linear3 = torch.nn.Linear(100, 1)
+        self.tanh = torch.nn.Tanh()
+        self.sm = torch.nn.Sigmoid()
+        self.hidden_cell = (torch.zeros(1, 1, 100),
+                            torch.zeros(1, 1, 100))
+
+    def forward(self, x):
+
+        pred, hn = self.rnn(x)
+        pred = self.linear1(pred)
+        pred = self.tanh(pred)
+        pred = self.linear2(pred)
+        pred = self.tanh(pred)
+        pred = self.linear3(pred)
+        pred = self.sm(pred)
+        return pred
+
