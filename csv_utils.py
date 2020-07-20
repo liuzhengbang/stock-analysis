@@ -36,8 +36,13 @@ def write_index(code, rs, append=False):
     return result
 
 
-def read_individual(code, cols=None):
-    ret = pd.read_csv(individual_name(code), usecols=cols, dtype=numpy.float32)
+def read_individual_csv(code, cols=None):
+    ret = pd.read_csv(individual_name(code), usecols=cols)
+    return ret
+
+
+def read_index_csv(code, cols=None):
+    ret = pd.read_csv(index_name(code), usecols=cols)
     return ret
 
 
