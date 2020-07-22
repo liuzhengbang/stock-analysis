@@ -1,7 +1,7 @@
 import baostock as bs
-
+import pandas as pd
 from csv_utils import write_individual, get_csv_latest_date, get_next_day_str, get_today_str, individual_name, \
-    index_name, write_index
+    index_name, write_index, save_stock_code_to_csv
 
 
 def query_individual_day_k_data(code, start="2000-01-01", append=True):
@@ -92,3 +92,17 @@ def query_index_day_k_data(code, start="2000-01-01", append=True):
         print("index [", code, "] is fully updated")
 
     return result
+
+
+def query_stock_code():
+    rs = bs.query_zz500_stocks()
+    save_stock_code_to_csv(rs, "zz500")
+
+    rs = bs.query_sz50_stocks()
+    save_stock_code_to_csv(rs, "sz50")
+
+    rs = bs.query_hs300_stocks()
+    save_stock_code_to_csv(rs, "hs300")
+
+    rs = bs.query_stock_industry()
+    save_stock_code_to_csv(rs, "all")

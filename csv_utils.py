@@ -85,3 +85,16 @@ def convert_str_to_date(date_str):
 
 def get_today_str():
     return datetime.today().strftime(DATE_PATTERN)
+
+
+def save_stock_code_to_csv(rs, name):
+    data = []
+    while (rs.error_code == '0') & rs.next():
+        data.append(rs.get_row_data())
+    result = pd.DataFrame(data, columns=rs.fields)
+    result.to_csv(STOCK_DATA_DIR_BASE + name + "_stocks.csv", encoding="gbk", index=False)
+
+
+def get_all_stocks_code():
+    ret = pd.read_csv(STOCK_DATA_DIR_BASE + "all_stocks.csv", usecols=["code"])
+    return ret.values.flatten().tolist()

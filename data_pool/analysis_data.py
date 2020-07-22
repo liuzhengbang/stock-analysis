@@ -8,6 +8,14 @@ index_cols_sel = ['open', 'high', 'low', 'close', 'volume', 'amount']
 device = torch.device('cuda:0')
 
 
+class DataException(Exception):
+    def __init__(self, value):
+        self.value = value
+
+    def __str__(self):
+        return repr(self.value)
+
+
 def construct_x(code):
     dataset_x = read_individual_csv(code, cols=individual_cols_sel)
     dataset_x.drop(labels=len(dataset_x) - 1, inplace=True)
@@ -28,6 +36,8 @@ def construct_dataset_with_index(code, index_code_list, shift=1):
     dataset_x = pd.DataFrame(csv_data, columns=title_list)
     dataset_y = pd.DataFrame(csv_data, columns=['pctChg'])
 
+    if len(dataset_x) < shift:
+        raise DataException(code)
     dataset_x.drop(labels=len(dataset_x) - shift, inplace=True)
     dataset_y.drop(labels=0, inplace=True)
 
