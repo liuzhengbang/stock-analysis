@@ -5,7 +5,7 @@ from stock_query.stock_utils import *
 def prepare_data(individual_day_k_list, index_day_k_list, append=True):
     login()
 
-    # query_stock_code()
+    query_stock_code()
 
     for code in individual_day_k_list:
         query_individual_day_k_data(code, append=append)

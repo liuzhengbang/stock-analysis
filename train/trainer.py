@@ -7,11 +7,11 @@ from train.net import NeuralNetwork as Net
 device = torch.device('cuda:0')
 
 
-def train_model(x_train, y_train, x_test, y_test, num_iterations=2000, learning_rate=0.9, print_cost=False):
+def train_model(loader, x_test, y_test, num_iterations=2000, learning_rate=0.9, print_cost=False):
 
     # print(x_train.shape)
 
-    model = Net(x_train.shape[1]).to(device=device)
+    model = Net(x_test.shape[1]).to(device=device)
 
     # Loss and Optimizer
     # Softmax is internally computed.
@@ -30,36 +30,29 @@ def train_model(x_train, y_train, x_test, y_test, num_iterations=2000, learning_
 
     # Training the Model
     for epoch in range(num_iterations):
-
-        # print("y", dataset_train_y.shape)
-        # Forward + Backward + Optimize
-
-        train_predict_out = model(x_train)
-        loss = criterion(train_predict_out, y_train)
-        # print_loss = loss.data.item()
-        # mask = train_predict_out.ge(0.5).float()
-        # correct = (mask == dataset_train_y).sum()
-        # acc = correct.item() / dataset_train_x.size(0)
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
+        for i, (x, y) in enumerate(loader):
+            train_predict_out = model(x)
+            loss = criterion(train_predict_out, y)
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
 
         if print_cost and epoch % 100 == 0:
             print("Loss after iteration %i: %f" % (epoch, loss))
             # print('acc is {:.4f}'.format(acc))
 
     y_prediction_test = predict(model, x_test)
-    y_prediction_train = predict(model, x_train)
+    # y_prediction_train = predict(model, x_train)
     # print(y_prediction_train.shape, y_train.shape)
     # print("train accuracy: {} %".format(100 - torch.mean(torch.abs(torch.sub(y_prediction_train, y_train))) * 100))
     # print("test accuracy: {} %".format(100 - torch.mean(torch.abs(torch.sub(y_prediction_test, y_test))) * 100))
 
-    train_accuracy = 100 - torch.mean(torch.abs(torch.sub(y_prediction_train, y_train))) * 100
-    train_accuracy = round(train_accuracy.item(), 2)
+    # train_accuracy = 100 - torch.mean(torch.abs(torch.sub(y_prediction_train, y_train))) * 100
+    # train_accuracy = round(train_accuracy.item(), 2)
     test_accuracy = 100 - torch.mean(torch.abs(torch.sub(y_prediction_test, y_test))) * 100
     test_accuracy = round(test_accuracy.item(), 2)
 
-    print("train accuracy", train_accuracy, "%")
+    # print("train accuracy", train_accuracy, "%")
     print("test accuracy", test_accuracy, "%")
 
     # l1_w, l1_b, l2_w, l2_b = model.weight()
@@ -68,7 +61,7 @@ def train_model(x_train, y_train, x_test, y_test, num_iterations=2000, learning_
     # print("l2 weight", l2_w)
     # print("l2 bias", l2_b)
     str_time = time.strftime('%Y-%m-%d-%H-%M-%S', time.localtime(time.time()))
-    torch.save(model, "model_data/" + str_time + "--" + str(train_accuracy) + "-" + str(test_accuracy) + "-model.pt")
+    torch.save(model, "model_data/" + str_time + "-" + str(test_accuracy) + "-model.pt")
 
     return model
 

@@ -23,7 +23,7 @@ def construct_x(code):
     return dataset_x
 
 
-def construct_dataset_with_index(code, index_code_list, shift=1):
+def construct_dataset_with_index(code, index_code_list, shift=1, filtering_only=False):
     csv_data = read_individual_csv(code)
     title_list = individual_cols_sel.copy()
 
@@ -38,6 +38,10 @@ def construct_dataset_with_index(code, index_code_list, shift=1):
 
     if len(dataset_x) < shift:
         raise DataException(code)
+
+    if filtering_only:
+        return
+
     dataset_x.drop(labels=len(dataset_x) - shift, inplace=True)
     dataset_y.drop(labels=0, inplace=True)
 
