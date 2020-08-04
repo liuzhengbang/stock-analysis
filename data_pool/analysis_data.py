@@ -64,7 +64,13 @@ def add_rolling_data(csv_data, title_list):
 
 def construct_dataset_with_index_and_history(code, index_code_list, filtering_only=False):
     history_length = 1000
-    csv_data = read_individual_csv(code)
+    try:
+        csv_data = read_individual_csv(code)
+    except FileNotFoundError:
+        raise DataException(code)
+    except pd.errors.EmptyDataError:
+        raise DataException(code)
+
     if len(csv_data) <= 1000:
         raise DataException(code)
 

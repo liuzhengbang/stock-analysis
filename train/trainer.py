@@ -8,6 +8,7 @@ device = torch.device('cuda:0')
 
 
 def train_model(loader, x_test, y_test, num_iterations=2000, learning_rate=0.9, print_cost=False):
+    print("start training")
 
     # print(x_train.shape)
 

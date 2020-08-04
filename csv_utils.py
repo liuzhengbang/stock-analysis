@@ -6,6 +6,7 @@ import pandas as pd
 STOCK_DATA_DIR_BASE = "stock_data" + "/"
 INDIVIDUAL_DIR = STOCK_DATA_DIR_BASE + "individual" + "/"
 INDEX_DIR = STOCK_DATA_DIR_BASE + "index" + "/"
+FILTERED_STOCK_FILE = STOCK_DATA_DIR_BASE + "filtered_stock_list.csv"
 DAY_K_SUFFIX = "_day_k_data.csv"
 DATE_PATTERN = "%Y-%m-%d"
 
@@ -98,3 +99,14 @@ def save_stock_code_to_csv(rs, name):
 def get_all_stocks_code():
     ret = pd.read_csv(STOCK_DATA_DIR_BASE + "all_stocks.csv", usecols=["code"])
     return ret.values.flatten().tolist()
+
+
+def save_filtered_stock_list(stock_list):
+    df = pd.DataFrame(stock_list, columns=["code"])
+    df.to_csv(FILTERED_STOCK_FILE, index=False)
+
+
+def load_filtered_stock_list():
+    ret = pd.read_csv(FILTERED_STOCK_FILE, usecols=["code"])
+    return ret.values.flatten().tolist()
+

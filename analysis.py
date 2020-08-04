@@ -1,7 +1,8 @@
-import pandas
+import pandas as pd
 import torch
 
-from csv_utils import read_individual_csv, read_index_csv, get_all_stocks_code
+from csv_utils import read_individual_csv, read_index_csv, get_all_stocks_code, save_filtered_stock_list, \
+    load_filtered_stock_list
 from data_pool.analysis_data import construct_y, construct_x, construct_dataset_with_index, DataException, \
     construct_dataset_with_index_and_history
 from train.trainer import train_model
@@ -49,12 +50,23 @@ def filter_list(stock_list):
             print("remove", stock, "from list")
             stock_list.remove(stock)
             continue
+    print("total stock num:", len(stock_list))
 
 
-all_stock_list = get_all_stocks_code()
-prepare_data(all_stock_list, index_list_query, append=False)
-# all_stock_list = ["sz.002120", "sh.600669", "sh.600670"]
-filter_list(all_stock_list)
+need_refresh_data = False
+append_mode = True
+
+if need_refresh_data:
+    all_stock_list = get_all_stocks_code()
+    filter_list(all_stock_list)
+    save_filtered_stock_list(all_stock_list)
+
+    prepare_data(all_stock_list, index_list_query, append=append_mode)
+else:
+    all_stock_list = load_filtered_stock_list()
+
+
+# all_stock_list = ["sz.002120", "sh.600600", "sh.600601"]
 
 
 class TrainingDataset(Dataset):
@@ -84,7 +96,7 @@ x_test, y_test = construct_dataset_with_index_and_history("sz.002120", index_lis
 
 
 dataset = TrainingDataset(all_stock_list)
-loader = torch.utils.data.DataLoader(dataset, batch_size=100, num_workers=0, shuffle=False)
+loader = torch.utils.data.DataLoader(dataset, batch_size=1, num_workers=0, shuffle=False)
 
 train_model(loader, x_test, y_test, num_iterations=5000, learning_rate=0.00001, print_cost=True)
 
