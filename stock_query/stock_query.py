@@ -1,6 +1,5 @@
 import baostock as bs
-import pandas as pd
-from csv_utils import write_individual, get_csv_latest_date, get_next_day_str, get_today_str, individual_name, \
+from utils.csv_utils import write_individual, get_csv_latest_date, get_next_day_str, get_today_str, individual_name, \
     index_name, write_index, save_stock_code_to_csv
 
 
