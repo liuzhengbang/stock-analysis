@@ -1,9 +1,11 @@
+import math
+
 import torch
 
 from utils.csv_utils import get_all_stocks_code, save_filtered_stock_list, \
     load_filtered_stock_list
 from data_provider.data_constructor import DataException, \
-    construct_dataset_with_index_and_history
+    construct_dataset_with_index_and_history, construct_dataset_batch
 from train.trainer import train_model
 from torch.utils.data.dataset import Dataset
 
@@ -69,15 +71,20 @@ else:
 
 
 class TrainingDataset(Dataset):
-    def __init__(self, stock_list):
+    def __init__(self, stock_list, num_stock_per_batch=100):
+        self.num_stock_per_batch = num_stock_per_batch
         self.stock_list = stock_list
 
     def __getitem__(self, index):
-        x, y = construct_dataset_with_index_and_history(self.stock_list[index], index_list_analysis)
+        start = index * self.num_stock_per_batch
+        end = (index + 1) * self.num_stock_per_batch
+        if end >= len(self.stock_list):
+            end = len(self.stock_list)
+        x, y = construct_dataset_batch(self.stock_list[start:end], index_list_analysis)
         return x, y
 
     def __len__(self):
-        return len(self.stock_list)
+        return math.ceil(len(self.stock_list)/self.num_stock_per_batch)
 
 
 # x_train, y_train = construct_dataset_with_index(all_stock_list[0], index_list_analysis)
@@ -94,7 +101,7 @@ x_test, y_test = construct_dataset_with_index_and_history("sz.002120", index_lis
 #         y_train = torch.cat([y_train, y_temp], dim=0)
 
 
-dataset = TrainingDataset(all_stock_list)
+dataset = TrainingDataset(all_stock_list, num_stock_per_batch=300)
 loader = torch.utils.data.DataLoader(dataset, batch_size=1, num_workers=0, shuffle=False)
 
 train_model(loader, x_test, y_test, num_iterations=5000, learning_rate=0.00001, print_cost=True)

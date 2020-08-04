@@ -101,6 +101,16 @@ def construct_dataset_with_index_and_history(code, index_code_list, filtering_on
     return dataset_x, dataset_y
 
 
+def construct_dataset_batch(stock_list, index_code_list):
+    x_train, y_train = construct_dataset_with_index_and_history(stock_list[0], index_code_list)
+    for code in stock_list[1:]:
+        x_temp, y_temp = construct_dataset_with_index_and_history(code, index_code_list)
+        x_train = torch.cat([x_train, x_temp], dim=0)
+        y_train = torch.cat([y_train, y_temp], dim=0)
+
+    return x_train, y_train
+
+
 def convert_pct_chg_to_bool(pct_chg):
     for value in range(pct_chg.shape[0]):
         if pct_chg[value] > 0:
