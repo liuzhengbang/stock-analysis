@@ -68,6 +68,7 @@ else:
 
 
 # all_stock_list = ["sz.002120", "sh.600600", "sh.600601"]
+all_stock_list = ["test"]
 
 
 class TrainingDataset(Dataset):
@@ -87,22 +88,11 @@ class TrainingDataset(Dataset):
         return math.ceil(len(self.stock_list)/self.num_stock_per_batch)
 
 
-# x_train, y_train = construct_dataset_with_index(all_stock_list[0], index_list_analysis)
-x_test, y_test = construct_dataset_with_index_and_history("sz.002120", index_list_analysis)
-# for code in all_stock_list[1:]:
-#
-#     try:
-#         x_temp, y_temp = construct_dataset_with_index(code, index_list_analysis)
-#     except DataException as e:
-#         print(e.value, "is dismissed")
-#     else:
-#         print("processing", code)
-#         x_train = torch.cat([x_train, x_temp], dim=0)
-#         y_train = torch.cat([y_train, y_temp], dim=0)
+x_test, y_test = construct_dataset_with_index_and_history("test", index_list_analysis)
 
 
-dataset = TrainingDataset(all_stock_list, num_stock_per_batch=300)
+dataset = TrainingDataset(all_stock_list, num_stock_per_batch=30)
 loader = torch.utils.data.DataLoader(dataset, batch_size=1, num_workers=0, shuffle=False)
 
-train_model(loader, x_test, y_test, num_iterations=5000, learning_rate=0.00001, print_cost=True)
+train_model(loader, x_test, y_test, num_iterations=5000, learning_rate=0.000001, print_cost=True)
 

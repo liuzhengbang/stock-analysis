@@ -31,10 +31,6 @@ class NeuralNetwork(nn.Module):
         pred = self.sm(pred)
         return pred
 
-    def weight(self):
-        return self.linear1.weight, self.linear1.bias, self.linear2.weight, self.linear2.bias
-
-
 
 class LSTMNeuralNetwork(nn.Module):
     def __init__(self, input_size):

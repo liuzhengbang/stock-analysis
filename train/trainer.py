@@ -17,7 +17,8 @@ def train_model(loader, x_test, y_test, num_iterations=2000, learning_rate=0.9, 
     # Loss and Optimizer
     # Softmax is internally computed.
     # Set parameters to be updated.
-    criterion = nn.BCELoss()
+    criterion = nn.BCEWithLogitsLoss()
+    # criterion = nn.BCELoss()
     optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
 
     # x_train = x_train.reshape(3238, 1, 8)
@@ -38,7 +39,7 @@ def train_model(loader, x_test, y_test, num_iterations=2000, learning_rate=0.9, 
             loss.backward()
             optimizer.step()
 
-        if print_cost and epoch % 100 == 0:
+        if print_cost and epoch % 1 == 0:
             print("Loss after iteration %i: %f" % (epoch, loss))
             # print('acc is {:.4f}'.format(acc))
 
