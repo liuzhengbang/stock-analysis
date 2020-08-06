@@ -39,7 +39,7 @@ def train_model(loader, x_test, y_test, num_iterations=2000, learning_rate=0.9, 
             loss.backward()
             optimizer.step()
 
-        if print_cost and epoch % 1 == 0:
+        if print_cost and epoch % 100 == 0:
             print("Loss after iteration %i: %f" % (epoch, loss))
             # print('acc is {:.4f}'.format(acc))
 

@@ -96,9 +96,20 @@ def save_stock_code_to_csv(rs, name):
     result.to_csv(STOCK_DATA_DIR_BASE + name + "_stocks.csv", encoding="gbk", index=False)
 
 
-def get_all_stocks_code():
+def get_all_stocks_code_list():
     ret = pd.read_csv(STOCK_DATA_DIR_BASE + "all_stocks.csv", usecols=["code"])
     return ret.values.flatten().tolist()
+
+
+def get_stock_code_list(stock):
+    ret = pd.read_csv(STOCK_DATA_DIR_BASE + stock + "_stocks.csv", usecols=["code"])
+    return ret.values.flatten().tolist()
+
+
+def get_stock_code_list_by_industry(industry):
+    ret = pd.read_csv(STOCK_DATA_DIR_BASE + "all_stocks.csv", encoding="gbk")
+    ret = ret[(ret.industry == industry)]
+    return ret['code'].values.flatten().tolist()
 
 
 def save_filtered_stock_list(stock_list):

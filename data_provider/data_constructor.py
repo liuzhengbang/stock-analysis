@@ -4,9 +4,9 @@ import pandas as pd
 from utils.csv_utils import read_individual_csv, read_index_csv
 
 individual_cols_sel = ['open', 'close', 'amount', 'high', 'low', 'volume',
-                       'peTTM', 'pbMRQ', 'psTTM', 'pcfNcfTTM']
+                       'peTTM', 'pbMRQ']
 individual_cols_norm = [10., 10., 100000000., 10., 10., 10000000.,
-                        1., 1., 1., 1.]
+                        1., 1.]
 index_cols_sel = ['open', 'high', 'low', 'close', 'volume', 'amount']
 index_cols_norm = [1000., 1000., 1000., 1000., 100000000., 100000000.]
 

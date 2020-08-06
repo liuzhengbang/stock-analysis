@@ -16,6 +16,7 @@ class NeuralNetwork(nn.Module):
         self.linear3 = nn.Linear(200, 1)
         self.tanh = nn.Tanh()
         self.sm = nn.Sigmoid()
+        # self.sm = nn.LeakyReLU()
 
     def forward(self, x):
         """
@@ -29,6 +30,7 @@ class NeuralNetwork(nn.Module):
         pred = self.tanh(pred)
         pred = self.linear3(pred)
         pred = self.sm(pred)
+        # print(self.linear1.weight.sum())
         return pred
 
 

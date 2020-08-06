@@ -1,14 +1,11 @@
+# coding=gbk
 import math
-
 import torch
-
-from utils.csv_utils import get_all_stocks_code, save_filtered_stock_list, \
-    load_filtered_stock_list
+from utils.csv_utils import *
 from data_provider.data_constructor import DataException, \
     construct_dataset_with_index_and_history, construct_dataset_batch
 from train.trainer import train_model
 from torch.utils.data.dataset import Dataset
-
 from stock_query.stock import prepare_data
 
 index_list_query = ["sh.000001",
@@ -58,7 +55,7 @@ need_refresh_data = False
 append_mode = True
 
 if need_refresh_data:
-    all_stock_list = get_all_stocks_code()
+    all_stock_list = get_all_stocks_code_list()
     filter_list(all_stock_list)
     save_filtered_stock_list(all_stock_list)
 
@@ -66,17 +63,23 @@ if need_refresh_data:
 else:
     all_stock_list = load_filtered_stock_list()
 
-
+all_stock_list = get_stock_code_list_by_industry("µç×Ó")
+filter_list(all_stock_list)
 # all_stock_list = ["sz.002120", "sh.600600", "sh.600601"]
-all_stock_list = ["test"]
+# all_stock_list = ["test"]
 
 
 class TrainingDataset(Dataset):
     def __init__(self, stock_list, num_stock_per_batch=100):
         self.num_stock_per_batch = num_stock_per_batch
         self.stock_list = stock_list
+        self.len = math.ceil(len(self.stock_list) / self.num_stock_per_batch)
+        if self.len == 1:
+            self.x, self.y = construct_dataset_batch(self.stock_list, index_list_analysis)
 
     def __getitem__(self, index):
+        if self.len == 1:
+            return self.x, self.y
         start = index * self.num_stock_per_batch
         end = (index + 1) * self.num_stock_per_batch
         if end >= len(self.stock_list):
@@ -85,14 +88,12 @@ class TrainingDataset(Dataset):
         return x, y
 
     def __len__(self):
-        return math.ceil(len(self.stock_list)/self.num_stock_per_batch)
+        return self.len
 
 
-x_test, y_test = construct_dataset_with_index_and_history("test", index_list_analysis)
+x_test, y_test = construct_dataset_with_index_and_history("sh.601166", index_list_analysis)
 
-
-dataset = TrainingDataset(all_stock_list, num_stock_per_batch=30)
+dataset = TrainingDataset(all_stock_list, num_stock_per_batch=50)
 loader = torch.utils.data.DataLoader(dataset, batch_size=1, num_workers=0, shuffle=False)
 
-train_model(loader, x_test, y_test, num_iterations=5000, learning_rate=0.000001, print_cost=True)
-
+train_model(loader, x_test, y_test, num_iterations=10000, learning_rate=0.5, print_cost=True)
