@@ -41,6 +41,8 @@ def train_model(loader, x_test, y_test, num_iterations=2000, learning_rate=0.9, 
 
         if print_cost and epoch % 100 == 0:
             print("Loss after iteration %i: %f" % (epoch, loss))
+            for p in model.parameters():
+                print(p.grad.norm())
             # print('acc is {:.4f}'.format(acc))
 
     y_prediction_test = predict(model, x_test)

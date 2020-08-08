@@ -22,6 +22,68 @@ class DataException(Exception):
         return repr(self.value)
 
 
+def construct_dataset(code, index_code_list, predict_days=7, threshold=0.05, append_index=True, append_history=True,
+                      filtering_only=False):
+    if append_history:
+        history_length = rolling_days[len(rolling_days) - 1]
+    else:
+        history_length = 1
+
+    try:
+        csv_data = read_individual_csv(code)
+    except FileNotFoundError:
+        raise DataException(code)
+    except pd.errors.EmptyDataError:
+        raise DataException(code)
+
+    if len(csv_data) <= history_length + predict_days:
+        raise DataException(code)
+
+    csv_data.drop(labels=0, inplace=True)
+    __normalize_individual__(csv_data)
+
+    title_list = individual_cols_sel.copy()
+
+    if append_index:
+        for index_code in index_code_list:
+            index_data = read_index_csv(index_code)
+            __normalize_index__(index_data)
+
+            csv_data = pd.merge(csv_data, index_data, how="inner", on="date", suffixes=('', '_' + index_code))
+            for sel in index_cols_sel:
+                title_list.append(sel + '_' + index_code)
+
+        if len(csv_data) <= predict_days:
+            raise DataException(code)
+
+        __add_rolling_data__(csv_data, title_list)
+    else:
+        csv_data = csv_data.reset_index(drop=True)
+
+    if append_history:
+        csv_data.drop(labels=range(0, history_length - 1), axis=0, inplace=True)
+
+    if filtering_only:
+        return
+
+    csv_data = csv_data.reset_index(drop=True)
+
+    # dataset_x = pd.DataFrame(csv_data, columns=title_list)
+    # dataset_y = pd.DataFrame(csv_data, columns=['pctChg'])
+    #
+    # dataset_x.drop(labels=len(dataset_x) - 1, inplace=True)
+    # dataset_y.drop(labels=0, inplace=True)
+    dataset_x, dataset_y = __getDataSet__(csv_data, title_list, predict_days, threshold=threshold)
+
+    if not filtering_only:
+        print(code, "has", len(dataset_x), "with predicted positive", dataset_y['predict_sort'].sum())
+
+    dataset_x = torch.tensor(dataset_x.values).to(device).float()
+    dataset_y = torch.tensor(dataset_y.values).to(device).float()
+
+    return dataset_x, dataset_y
+
+
 def __add_rolling_data__(csv_data, title_list):
     for days in rolling_days:
         csv_data['pctChg_' + str(days)] = csv_data['pctChg'].rolling(days).sum()
@@ -30,76 +92,40 @@ def __add_rolling_data__(csv_data, title_list):
         title_list.append('volume_' + str(days))
 
 
-def construct_dataset_with_index_and_history(code, index_code_list, filtering_only=False):
-    history_length = 1000
-    try:
-        csv_data = read_individual_csv(code)
-    except FileNotFoundError:
-        raise DataException(code)
-    except pd.errors.EmptyDataError:
-        raise DataException(code)
+def __getDataSet__(csv_data, title_list, predict_days, threshold=0.0):
+    csv_data['predict'] = (csv_data['close'].rolling(predict_days).mean().shift(-predict_days) - csv_data['close']) \
+                          / csv_data['close']
+    csv_data['predict_sort'] = csv_data.apply(lambda x: 1.0 if x.predict > threshold else 0.0, axis=1)
 
-    if len(csv_data) <= 1000:
-        raise DataException(code)
-
-    csv_data.drop(labels=0, inplace=True)
-    normalize_individual(csv_data)
-
-    title_list = individual_cols_sel.copy()
-
-    for index_code in index_code_list:
-        index_data = read_index_csv(index_code)
-        normalize_index(index_data)
-
-        csv_data = pd.merge(csv_data, index_data, how="inner", on="date", suffixes=('', '_' + index_code))
-        for sel in index_cols_sel:
-            title_list.append(sel + '_' + index_code)
-
-    if len(csv_data) <= 1000:
-        raise DataException(code)
-
-    __add_rolling_data__(csv_data, title_list)
-
-    csv_data.drop(labels=range(0, history_length - 1), axis=0, inplace=True)
-    csv_data = csv_data.reset_index(drop=True)
-
+    end_index = len(csv_data)
+    csv_data.drop(labels=range(end_index - predict_days, end_index), inplace=True)
     dataset_x = pd.DataFrame(csv_data, columns=title_list)
-    dataset_y = pd.DataFrame(csv_data, columns=['pctChg'])
+    dataset_y = pd.DataFrame(csv_data, columns=['predict_sort'])
 
-    if filtering_only:
-        return
-
-    dataset_x.drop(labels=len(dataset_x) - 1, inplace=True)
-    dataset_y.drop(labels=0, inplace=True)
-
-    dataset_x = torch.tensor(dataset_x.values).to(device).float()
-    dataset_y = torch.tensor(dataset_y.values).to(device).float()
-
-    convert_pct_chg_to_bool(dataset_y)
     return dataset_x, dataset_y
 
 
-def normalize_individual(frame):
+def __normalize_individual__(frame):
     for index in range(len(individual_cols_sel)):
-        frame[individual_cols_sel[index]] = frame[individual_cols_sel[index]]/individual_cols_norm[index]
+        frame[individual_cols_sel[index]] = frame[individual_cols_sel[index]] / individual_cols_norm[index]
 
 
-def normalize_index(frame):
+def __normalize_index__(frame):
     for index in range(len(index_cols_sel)):
-        frame[index_cols_sel[index]] = frame[index_cols_sel[index]]/index_cols_norm[index]
+        frame[index_cols_sel[index]] = frame[index_cols_sel[index]] / index_cols_norm[index]
 
 
 def construct_dataset_batch(stock_list, index_code_list):
-    x_train, y_train = construct_dataset_with_index_and_history(stock_list[0], index_code_list)
+    x_train, y_train = construct_dataset(stock_list[0], index_code_list)
     for code in stock_list[1:]:
-        x_temp, y_temp = construct_dataset_with_index_and_history(code, index_code_list)
+        x_temp, y_temp = construct_dataset(code, index_code_list)
         x_train = torch.cat([x_train, x_temp], dim=0)
         y_train = torch.cat([y_train, y_temp], dim=0)
 
     return x_train, y_train
 
 
-def convert_pct_chg_to_bool(pct_chg):
+def __convert_pct_chg_to_bool__(pct_chg):
     for value in range(pct_chg.shape[0]):
         if pct_chg[value] > 0:
             pct_chg[value] = 1.

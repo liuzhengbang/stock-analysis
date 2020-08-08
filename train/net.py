@@ -11,9 +11,9 @@ class NeuralNetwork(nn.Module):
         """
         super(NeuralNetwork, self).__init__()
         # print("input size", input_size)
-        self.linear1 = nn.Linear(input_size, 300)
-        self.linear2 = nn.Linear(300, 200)
-        self.linear3 = nn.Linear(200, 1)
+        self.linear1 = nn.Linear(input_size, 3000)
+        self.linear2 = nn.Linear(3000, 1000)
+        self.linear3 = nn.Linear(1000, 1)
         self.tanh = nn.Tanh()
         self.sm = nn.Sigmoid()
         # self.sm = nn.LeakyReLU()
@@ -29,7 +29,7 @@ class NeuralNetwork(nn.Module):
         pred = self.linear2(pred)
         pred = self.tanh(pred)
         pred = self.linear3(pred)
-        pred = self.sm(pred)
+        # pred = self.sm(pred)
         # print(self.linear1.weight.sum())
         return pred
 
