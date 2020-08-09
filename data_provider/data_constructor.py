@@ -11,7 +11,7 @@ index_cols_sel = ['open', 'high', 'low', 'close', 'volume', 'amount']
 index_cols_norm = [1000., 1000., 1000., 1000., 100000000., 100000000.]
 
 device = torch.device('cuda:0')
-rolling_days = [2, 3, 4, 5, 6, 7, 14, 30, 60, 100, 300, 600, 1000]
+rolling_days = [2, 3, 4, 5, 6, 7, 10, 15, 20, 25, 30, 60, 100, 300, 600, 1000]
 
 
 class DataException(Exception):
@@ -22,7 +22,7 @@ class DataException(Exception):
         return repr(self.value)
 
 
-def construct_dataset(code, index_code_list, predict_days=7, threshold=0.05, append_index=True, append_history=True,
+def construct_dataset(code, index_code_list, predict_days=1, threshold=0.0, append_index=True, append_history=True,
                       filtering_only=False):
     if append_history:
         history_length = rolling_days[len(rolling_days) - 1]
@@ -63,25 +63,23 @@ def construct_dataset(code, index_code_list, predict_days=7, threshold=0.05, app
     if append_history:
         csv_data.drop(labels=range(0, history_length - 1), axis=0, inplace=True)
 
-    if filtering_only:
-        return
-
     csv_data = csv_data.reset_index(drop=True)
 
-    # dataset_x = pd.DataFrame(csv_data, columns=title_list)
-    # dataset_y = pd.DataFrame(csv_data, columns=['pctChg'])
-    #
-    # dataset_x.drop(labels=len(dataset_x) - 1, inplace=True)
-    # dataset_y.drop(labels=0, inplace=True)
     dataset_x, dataset_y = __getDataSet__(csv_data, title_list, predict_days, threshold=threshold)
 
-    if not filtering_only:
-        print(code, "has", len(dataset_x), "with predicted positive", dataset_y['predict_sort'].sum())
+    if filtering_only:
+        print(code, "has", len(dataset_x), "samples with positive percentage",
+              round(dataset_y['predict_sort'].sum()/len(dataset_x) * 100, 2), "%")
+        return
 
-    dataset_x = torch.tensor(dataset_x.values).to(device).float()
-    dataset_y = torch.tensor(dataset_y.values).to(device).float()
+    dataset_x = __convert_to_tensor__(dataset_x)
+    dataset_y = __convert_to_tensor__(dataset_y)
 
     return dataset_x, dataset_y
+
+
+def __convert_to_tensor__(dataset):
+    return torch.tensor(dataset.values).to(device).float()
 
 
 def __add_rolling_data__(csv_data, title_list):

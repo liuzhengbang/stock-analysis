@@ -7,7 +7,7 @@ from train.net import NeuralNetwork as Net
 device = torch.device('cuda:0')
 
 
-def train_model(loader, x_test, y_test, num_iterations=2000, learning_rate=0.9, print_cost=False):
+def train_model(loader, x_test, y_test, num_iterations=2000, learning_rate=0.9, weight=1, print_cost=False):
     print("start training")
 
     # print(x_train.shape)
@@ -17,7 +17,8 @@ def train_model(loader, x_test, y_test, num_iterations=2000, learning_rate=0.9, 
     # Loss and Optimizer
     # Softmax is internally computed.
     # Set parameters to be updated.
-    criterion = nn.BCEWithLogitsLoss()
+    pos_weight = torch.tensor([weight]).to(device)
+    criterion = nn.BCEWithLogitsLoss(weight=pos_weight)
     # criterion = nn.BCELoss()
     optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
 
@@ -40,10 +41,10 @@ def train_model(loader, x_test, y_test, num_iterations=2000, learning_rate=0.9, 
             optimizer.step()
 
         if print_cost and epoch % 100 == 0:
-            print("Loss after iteration %i: %f" % (epoch, loss))
+            grad_sum = torch.tensor(0.0)
             for p in model.parameters():
-                print(p.grad.norm())
-            # print('acc is {:.4f}'.format(acc))
+                grad_sum += p.grad.norm()
+            print("Loss after iteration {} with loss: {:.6f}, grad sum: {:.6f}".format(epoch, loss.data, grad_sum.data))
 
     y_prediction_test = predict(model, x_test)
     # y_prediction_train = predict(model, x_train)
@@ -73,13 +74,15 @@ def train_model(loader, x_test, y_test, num_iterations=2000, learning_rate=0.9, 
 def predict(module, source):
     m = source.shape[0]
     y_prediction = torch.zeros((m, 1), device=device)
-    red = module.forward(source)
-    for i in range(red.shape[0]):
+    ret = module.forward(source)
+    for i in range(ret.shape[0]):
 
-        # Convert probabilities A[0,i] to actual predictions p[0,i]
-        if red[i, 0] <= 0.5:
+        # Convert probabilities A[0,i] to actual predictions p[0,i] For Sigmoid
+        if ret[i, 0] <= 0.5:
+            print("0", ret[i, 0])
             y_prediction[i, 0] = 0
         else:
+            print("1", ret[i, 0])
             y_prediction[i, 0] = 1
 
     assert (y_prediction.shape == (m, 1))

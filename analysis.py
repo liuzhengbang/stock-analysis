@@ -63,9 +63,10 @@ if need_refresh_data:
 else:
     all_stock_list = load_filtered_stock_list()
 
-all_stock_list = get_stock_code_list_by_industry("银行")
+all_stock_list = ["sh.600000"]
+# all_stock_list = get_stock_code_list_by_industry("银行")
 filter_list(all_stock_list)
-all_stock_list.remove("sh.600000")
+# all_stock_list.remove("sh.600000")
 # all_stock_list = ["sz.002120", "sh.600600", "sh.600601"]
 # all_stock_list = ["test"]
 
@@ -77,6 +78,7 @@ class TrainingDataset(Dataset):
         self.len = math.ceil(len(self.stock_list) / self.num_stock_per_batch)
         if self.len == 1:
             self.x, self.y = construct_dataset_batch(self.stock_list, index_list_analysis)
+            # print(self.x.shape, self.y.shape)
 
     def __getitem__(self, index):
         if self.len == 1:
@@ -98,4 +100,4 @@ print("all stocks being trained", all_stock_list)
 dataset = TrainingDataset(all_stock_list, num_stock_per_batch=50)
 loader = torch.utils.data.DataLoader(dataset, batch_size=1, num_workers=0, shuffle=False)
 
-train_model(loader, x_test, y_test, num_iterations=10000, learning_rate=0.001, print_cost=True)
+train_model(loader, x_test, y_test, num_iterations=10000, learning_rate=0.00001, weight=1, print_cost=True)
