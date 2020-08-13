@@ -22,8 +22,20 @@ class DataException(Exception):
         return repr(self.value)
 
 
-def construct_dataset(code, index_code_list, predict_days=1, threshold=0.0, append_index=True, append_history=True,
+def construct_dataset(code, index_code_list, predict_days=5, threshold=0.05, append_index=True, append_history=True,
                       filtering_only=False):
+    """
+
+    :param code: stock code
+    :param index_code_list: index code to append
+    :param predict_days: predicts n days after the given day, 1 predicts only next day
+    :param threshold: threshold for stock rise indicts positive, 0: is enough 0.1: average 10% rise
+    :param append_index: whether append index
+    :param append_history: whether append history
+    :param filtering_only: if is filtering only, that will not convert to gpu, but will print information
+    :return:
+    """
+
     if append_history:
         history_length = rolling_days[len(rolling_days) - 1]
     else:

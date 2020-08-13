@@ -21,6 +21,7 @@ def train_model(loader, x_test, y_test, num_iterations=2000, learning_rate=0.9, 
     criterion = nn.BCEWithLogitsLoss(weight=pos_weight)
     # criterion = nn.BCELoss()
     optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
+    # optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
     # x_train = x_train.reshape(3238, 1, 8)
     # x_train = x_train.to(device=device)
@@ -46,7 +47,7 @@ def train_model(loader, x_test, y_test, num_iterations=2000, learning_rate=0.9, 
                 grad_sum += p.grad.norm()
             print("Loss after iteration {} with loss: {:.6f}, grad sum: {:.6f}".format(epoch, loss.data, grad_sum.data))
 
-    y_prediction_test = predict(model, x_test)
+    y_prediction_test = predict(model, x_test, y_test)
     # y_prediction_train = predict(model, x_train)
     # print(y_prediction_train.shape, y_train.shape)
     # print("train accuracy: {} %".format(100 - torch.mean(torch.abs(torch.sub(y_prediction_train, y_train))) * 100))
@@ -71,19 +72,25 @@ def train_model(loader, x_test, y_test, num_iterations=2000, learning_rate=0.9, 
     return model
 
 
-def predict(module, source):
+def predict(module, source, y_test):
     m = source.shape[0]
     y_prediction = torch.zeros((m, 1), device=device)
     ret = module.forward(source)
     for i in range(ret.shape[0]):
 
         # Convert probabilities A[0,i] to actual predictions p[0,i] For Sigmoid
-        if ret[i, 0] <= 0.5:
-            print("0", ret[i, 0])
+        if ret[i, 0] <= 0.0:
+            # print("0", ret[i, 0])
             y_prediction[i, 0] = 0
         else:
-            print("1", ret[i, 0])
+            # print("1", ret[i, 0])
             y_prediction[i, 0] = 1
+
+    for i in range(ret.shape[0]):
+
+        # Convert probabilities A[0,i] to actual predictions p[0,i] For Sigmoid
+        if y_prediction[i, 0] != y_test[i, 0]:
+            print(y_prediction[i, 0], y_test[i, 0], ret[i, 0])
 
     assert (y_prediction.shape == (m, 1))
 
