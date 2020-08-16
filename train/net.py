@@ -10,7 +10,7 @@ class NeuralNetwork(nn.Module):
         member variables.
         """
         super(NeuralNetwork, self).__init__()
-        # print("input size", input_size)
+        print("input size", input_size)
         self.linear1 = nn.Linear(input_size, 500)
         self.linear2 = nn.Linear(500, 1)
         # self.linear3 = nn.Linear(1000, 1)

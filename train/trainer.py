@@ -3,6 +3,8 @@ import time
 import numpy as np
 import torch
 import torch.nn as nn
+
+from data_provider.data_constructor import convert_to_tensor
 from train.net import NeuralNetwork as Net
 device = torch.device('cuda:0')
 
@@ -35,6 +37,8 @@ def train_model(loader, x_test, y_test, num_iterations=2000, learning_rate=0.9, 
     # Training the Model
     for epoch in range(num_iterations):
         for i, (x, y) in enumerate(loader):
+            x = x.to(device).float()
+            y = y.to(device).float()
             train_predict_out = model(x)
             loss = criterion(train_predict_out, y)
             optimizer.zero_grad()

@@ -3,7 +3,7 @@ import math
 import torch
 from utils.csv_utils import *
 from data_provider.data_constructor import DataException, \
-    construct_dataset, construct_dataset_batch
+    construct_dataset, construct_dataset_batch, construct_temp_csv_data
 from train.trainer import train_model
 from torch.utils.data.dataset import Dataset
 from stock_query.stock import prepare_data
@@ -43,7 +43,7 @@ def filter_list(stock_list):
     for stock in stock_list[::-1]:
         # print("processing", stock)
         try:
-            construct_dataset(stock, index_list_analysis, filtering_only=True)
+            construct_dataset(stock, index_list_analysis)
         except DataException:
             print("remove", stock, "from list")
             stock_list.remove(stock)
@@ -65,39 +65,45 @@ else:
 
 # all_stock_list = ["sh.600000"]
 all_stock_list = get_stock_code_list_by_industry("ÒøĞĞ")
-filter_list(all_stock_list)
 all_stock_list.remove("sh.600000")
+construct_temp_csv_data(all_stock_list, index_list_analysis)
+# filter_list(all_stock_list)
+
 # all_stock_list = ["sz.002120", "sh.600600", "sh.600601"]
 # all_stock_list = ["test"]
 
 
 class TrainingDataset(Dataset):
-    def __init__(self, stock_list, num_stock_per_batch=100):
-        self.num_stock_per_batch = num_stock_per_batch
-        self.stock_list = stock_list
-        self.len = math.ceil(len(self.stock_list) / self.num_stock_per_batch)
-        if self.len == 1:
-            self.x, self.y = construct_dataset_batch(self.stock_list, index_list_analysis)
-            # print(self.x.shape, self.y.shape)
+    def __init__(self, positive_data, negative_data):
+        self.pos_data = positive_data
+        self.neg_data = negative_data
+        self.pos_length = len(self.pos_data)
+        self.neg_length = len(self.neg_data)
+        self.length = max(self.pos_length, self.neg_length) * 2
 
-    def __getitem__(self, index):
-        if self.len == 1:
-            return self.x, self.y
-        start = index * self.num_stock_per_batch
-        end = (index + 1) * self.num_stock_per_batch
-        if end >= len(self.stock_list):
-            end = len(self.stock_list)
-        x, y = construct_dataset_batch(self.stock_list[start:end], index_list_analysis)
-        return x, y
+    def __getitem__(self, ndx):
+        index = ndx // 2
+        # print("index", index, "in", ndx)
+        if ndx / 2 == 0:
+            pos_index = index % self.pos_length
+            # print("pos index", self.pos_data.values[pos_index].shape)
+            return self.pos_data.values[pos_index], torch.tensor([1.0])
+        else:
+            neg_index = index % self.neg_length
+            # print("neg index", neg_index)
+            return self.neg_data.values[neg_index], torch.tensor([0.0])
 
     def __len__(self):
-        return self.len
+        # print("length", self.length)
+        return self.length
 
 
-x_test, y_test = construct_dataset("sh.600000", index_list_analysis)
-# x_test, y_test = construct_dataset("test", index_list_analysis)
-print("all stocks being trained", all_stock_list)
-dataset = TrainingDataset(all_stock_list, num_stock_per_batch=50)
-loader = torch.utils.data.DataLoader(dataset, batch_size=1, num_workers=0, shuffle=False)
+x_test, y_test = construct_dataset("sh.600000", index_list_analysis, return_data=True)
+# # # x_test, y_test = construct_dataset("test", index_list_analysis)
+# # print("all stocks being trained", all_stock_list)
+pos_dataset = load_temp_positive_data()
+neg_dataset = load_temp_negative_data()
+dataset = TrainingDataset(pos_dataset, neg_dataset)
+loader = torch.utils.data.DataLoader(dataset, batch_size=100, num_workers=0, shuffle=False)
 
-train_model(loader, x_test, y_test, num_iterations=8000, learning_rate=0.00001, weight=20, print_cost=True)
+train_model(loader, x_test, y_test, num_iterations=200, learning_rate=0.00001, weight=20, print_cost=True)
