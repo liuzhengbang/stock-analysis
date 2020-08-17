@@ -6,33 +6,20 @@ import torch.nn as nn
 
 from data_provider.data_constructor import convert_to_tensor
 from train.net import NeuralNetwork as Net
+
 device = torch.device('cuda:0')
 
 
 def train_model(loader, x_test, y_test, num_iterations=2000, learning_rate=0.9, weight=1, print_cost=False):
     print("start training")
 
-    # print(x_train.shape)
-
     model = Net(x_test.shape[1]).to(device=device)
 
-    # Loss and Optimizer
-    # Softmax is internally computed.
-    # Set parameters to be updated.
     pos_weight = torch.tensor([weight]).to(device)
     criterion = nn.BCEWithLogitsLoss(weight=pos_weight)
     # criterion = nn.BCELoss()
-    optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
-    # optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
-
-    # x_train = x_train.reshape(3238, 1, 8)
-    # x_train = x_train.to(device=device)
-    # y_train = y_train.reshape(3238, 1, 1)
-    # y_train = y_train.to(device=device)
-    # x_test = x_test.reshape(2338, 1, 8)
-    # x_test = x_test.to(device=device)
-    # y_test = y_test.reshape(2338, 1, 1)
-    # y_test = y_test.to(device=device)
+    # optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
+    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
     # Training the Model
     for epoch in range(num_iterations):
@@ -49,34 +36,23 @@ def train_model(loader, x_test, y_test, num_iterations=2000, learning_rate=0.9, 
             grad_sum = torch.tensor(0.0)
             for p in model.parameters():
                 grad_sum += p.grad.norm()
-            print("Loss after iteration {} with loss: {:.6f}, grad sum: {:.6f}".format(epoch, loss.data, grad_sum.data))
+            with torch.no_grad():
+                accuracy, precision, recall = validate(model, x_test, y_test)
+            print("Loss after iteration {} with loss: {:.6f}, grad sum: {:.6f},"
+                  " test accuracy {}%, precision {}%, recall {}%"
+                  .format(epoch, loss.data, grad_sum.data, accuracy, precision, recall))
 
-    y_prediction_test = predict(model, x_test, y_test)
-    # y_prediction_train = predict(model, x_train)
-    # print(y_prediction_train.shape, y_train.shape)
-    # print("train accuracy: {} %".format(100 - torch.mean(torch.abs(torch.sub(y_prediction_train, y_train))) * 100))
-    # print("test accuracy: {} %".format(100 - torch.mean(torch.abs(torch.sub(y_prediction_test, y_test))) * 100))
+    accuracy, precision, recall = validate(model, x_test, y_test)
+    print("Test Dataset Accuracy:", accuracy, "Precision:", precision, "Recall:", recall)
 
-    # train_accuracy = 100 - torch.mean(torch.abs(torch.sub(y_prediction_train, y_train))) * 100
-    # train_accuracy = round(train_accuracy.item(), 2)
-    test_accuracy = 100 - torch.mean(torch.abs(torch.sub(y_prediction_test, y_test))) * 100
-    test_accuracy = round(test_accuracy.item(), 2)
-
-    # print("train accuracy", train_accuracy, "%")
-    print("test accuracy", test_accuracy, "%")
-
-    # l1_w, l1_b, l2_w, l2_b = model.weight()
-    # print("l1 weight", l1_w)
-    # print("l1 bias", l1_b)
-    # print("l2 weight", l2_w)
-    # print("l2 bias", l2_b)
     str_time = time.strftime('%Y-%m-%d-%H-%M-%S', time.localtime(time.time()))
-    torch.save(model, "model_data/" + str_time + "-" + str(test_accuracy) + "-model.pt")
+    torch.save(model.state_dict(),
+               "model_data/" + str_time + "-" + str(accuracy) + "-" + str(precision) + "-" + str(recall) + "-model.pt")
 
     return model
 
 
-def predict(module, source, y_test):
+def predict(module, source):
     m = source.shape[0]
     y_prediction = torch.zeros((m, 1), device=device)
     ret = module.forward(source)
@@ -84,18 +60,39 @@ def predict(module, source, y_test):
 
         # Convert probabilities A[0,i] to actual predictions p[0,i] For Sigmoid
         if ret[i, 0] <= 0.0:
-            # print("0", ret[i, 0])
             y_prediction[i, 0] = 0
         else:
-            # print("1", ret[i, 0])
             y_prediction[i, 0] = 1
-
-    for i in range(ret.shape[0]):
-
-        # Convert probabilities A[0,i] to actual predictions p[0,i] For Sigmoid
-        if y_prediction[i, 0] != y_test[i, 0]:
-            print(y_prediction[i, 0], y_test[i, 0], ret[i, 0])
 
     assert (y_prediction.shape == (m, 1))
 
     return y_prediction
+
+
+def validate(module, source, y_test):
+    y_prediction = predict(module, source)
+    total_sample = source.shape[0]
+    accuracy = 100.0 - torch.mean(torch.abs(torch.sub(y_prediction, y_test))) * 100.0
+    total_positive_prediction = 0
+    total_negative_prediction = 0
+    true_positive = 0
+    false_negative = 0
+    all_positive = torch.sum(y_prediction)
+    for i in range(total_sample):
+        if y_prediction[i, 0] == 0.0:
+            total_negative_prediction = total_negative_prediction + 1
+            if y_test[i, 0] == 0.0:
+                false_negative = false_negative + 1
+        elif y_prediction[i, 0] == 1.0:
+            total_positive_prediction = total_positive_prediction + 1
+            if y_test[i, 0] == 1.0:
+                true_positive = true_positive + 1
+    assert total_sample == (total_positive_prediction + total_negative_prediction)
+
+    precision = 100.0 * true_positive / all_positive
+    recall = 100.0 * true_positive / (true_positive + false_negative)
+    accuracy = round(accuracy.item(), 2)
+    precision = round(precision.item(), 2)
+    recall = round(recall, 2)
+
+    return accuracy, precision, recall

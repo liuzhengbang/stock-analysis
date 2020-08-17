@@ -1,6 +1,8 @@
 # coding=gbk
 import math
 import torch
+from torch.utils.data.dataloader import DataLoader
+
 from utils.csv_utils import *
 from data_provider.data_constructor import DataException, \
     construct_dataset, construct_dataset_batch, construct_temp_csv_data
@@ -41,9 +43,9 @@ index_list_analysis = ["sh.000001",
 def filter_list(stock_list):
     print("start filtering stock list")
     for stock in stock_list[::-1]:
-        # print("processing", stock)
+        print("processing", stock)
         try:
-            construct_dataset(stock, index_list_analysis)
+            construct_dataset(stock, index_list_analysis, return_data=True)
         except DataException:
             print("remove", stock, "from list")
             stock_list.remove(stock)
@@ -51,13 +53,13 @@ def filter_list(stock_list):
     print("total stock num:", len(stock_list))
 
 
-need_refresh_data = False
-append_mode = True
+need_refresh_data = True
+append_mode = False
 
 if need_refresh_data:
     all_stock_list = get_all_stocks_code_list()
-    filter_list(all_stock_list)
-    save_filtered_stock_list(all_stock_list)
+    # filter_list(all_stock_list)
+    # save_filtered_stock_list(all_stock_list)
 
     prepare_data(all_stock_list, index_list_query, append=append_mode)
 else:
@@ -66,7 +68,7 @@ else:
 # all_stock_list = ["sh.600000"]
 all_stock_list = get_stock_code_list_by_industry("银行")
 all_stock_list.remove("sh.600000")
-construct_temp_csv_data(all_stock_list, index_list_analysis)
+# construct_temp_csv_data(all_stock_list, index_list_analysis)
 # filter_list(all_stock_list)
 
 # all_stock_list = ["sz.002120", "sh.600600", "sh.600601"]
@@ -84,9 +86,9 @@ class TrainingDataset(Dataset):
     def __getitem__(self, ndx):
         index = ndx // 2
         # print("index", index, "in", ndx)
-        if ndx / 2 == 0:
+        if ndx % 2 == 0:
             pos_index = index % self.pos_length
-            # print("pos index", self.pos_data.values[pos_index].shape)
+            # print("pos index", pos_index)
             return self.pos_data.values[pos_index], torch.tensor([1.0])
         else:
             neg_index = index % self.neg_length
@@ -104,6 +106,6 @@ x_test, y_test = construct_dataset("sh.600000", index_list_analysis, return_data
 pos_dataset = load_temp_positive_data()
 neg_dataset = load_temp_negative_data()
 dataset = TrainingDataset(pos_dataset, neg_dataset)
-loader = torch.utils.data.DataLoader(dataset, batch_size=100, num_workers=0, shuffle=False)
+loader = DataLoader(dataset, batch_size=2000, num_workers=0, shuffle=False)
 
-train_model(loader, x_test, y_test, num_iterations=200, learning_rate=0.00001, weight=20, print_cost=True)
+train_model(loader, x_test, y_test, num_iterations=200, learning_rate=0.00001, weight=1, print_cost=True)
