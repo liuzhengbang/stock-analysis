@@ -90,7 +90,10 @@ def validate(module, source, y_test):
     assert total_sample == (total_positive_prediction + total_negative_prediction)
 
     precision = 100.0 * true_positive / all_positive
-    recall = 100.0 * true_positive / (true_positive + false_negative)
+    if (true_positive + false_negative) == 0:
+        recall = 0.00
+    else:
+        recall = 100.0 * true_positive / (true_positive + false_negative)
     accuracy = round(accuracy.item(), 2)
     precision = round(precision.item(), 2)
     recall = round(recall, 2)

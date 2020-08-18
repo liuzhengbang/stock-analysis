@@ -5,7 +5,7 @@ from torch.utils.data.dataloader import DataLoader
 
 from utils.csv_utils import *
 from data_provider.data_constructor import DataException, \
-    construct_dataset, construct_dataset_batch, construct_temp_csv_data
+    construct_dataset, construct_temp_csv_data
 from train.trainer import train_model
 from torch.utils.data.dataset import Dataset
 from stock_query.stock import prepare_data
@@ -53,8 +53,8 @@ def filter_list(stock_list):
     print("total stock num:", len(stock_list))
 
 
-need_refresh_data = True
-append_mode = False
+need_refresh_data = False
+append_mode = True
 
 if need_refresh_data:
     all_stock_list = get_all_stocks_code_list()
