@@ -10,10 +10,14 @@ from train.net import NeuralNetwork as Net
 device = torch.device('cuda:0')
 
 
-def train_model(loader, x_test, y_test, num_iterations=2000, learning_rate=0.9, weight=1, print_cost=False):
+def train_model(loader, x_test, y_test, prev_model=None, num_iterations=2000, learning_rate=0.9, weight=1, print_cost=False):
     print("start training")
 
     model = Net(x_test.shape[1]).to(device=device)
+    if prev_model is not None:
+        print("load", prev_model)
+        model.load_state_dict(torch.load("model_data/" + prev_model))
+        model.to(device)
 
     pos_weight = torch.tensor([weight]).to(device)
     criterion = nn.BCEWithLogitsLoss(weight=pos_weight)

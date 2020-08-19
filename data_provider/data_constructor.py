@@ -12,7 +12,7 @@ index_cols_sel = ['open', 'high', 'low', 'close', 'volume', 'amount']
 index_cols_norm = [1000., 1000., 1000., 1000., 100000000., 100000000.]
 
 device = torch.device('cuda:0')
-rolling_days = [2, 3, 4, 5, 6, 7, 10, 15, 20, 25, 30, 60, 100, 300, 600, 1000]
+default_rolling_days = [2, 3, 4, 5, 6, 7, 10, 15, 20, 25, 30, 60, 100, 300, 600, 1000]
 
 
 class DataException(Exception):
@@ -23,10 +23,15 @@ class DataException(Exception):
         return repr(self.value)
 
 
-def construct_dataset(code, index_code_list, predict_days=None, thresholds=None, append_index=True, append_history=True,
+def construct_dataset(code, index_code_list, predict_days=None, thresholds=None,
+                      append_history=True,
+                      append_index=True,
+                      rolling_days=None,
                       return_data=False):
     """
 
+    :param append_history:
+    :param rolling_days:
     :param thresholds:
     :param return_data:
     :param code: stock code
@@ -34,11 +39,12 @@ def construct_dataset(code, index_code_list, predict_days=None, thresholds=None,
     :param predict_days: predicts n days after the given day, 1 predicts only next day
     :param thresholds: threshold for stock rise indicts positive, 0: is enough 0.1: average 10% rise
     :param append_index: whether append index
-    :param append_history: whether append history
     :param return_data: return dataset x and y
     :return:
     """
 
+    if rolling_days is None:
+        rolling_days = default_rolling_days
     if thresholds is None:
         thresholds = [0.05]
     if predict_days is None:
@@ -55,7 +61,7 @@ def construct_dataset(code, index_code_list, predict_days=None, thresholds=None,
     except pd.errors.EmptyDataError:
         raise DataException(code)
 
-    if len(csv_data) <= history_length + max(predict_days):
+    if len(csv_data) < max(rolling_days) + max(predict_days):
         raise DataException(code)
 
     csv_data.drop(labels=0, inplace=True)
@@ -73,9 +79,10 @@ def construct_dataset(code, index_code_list, predict_days=None, thresholds=None,
                 title_list.append(sel + '_' + index_code)
 
         if len(csv_data) <= max(predict_days):
+            print(len(csv_data))
             raise DataException(code)
 
-        _add_history_data(csv_data, title_list)
+        _add_history_data(csv_data, title_list, rolling_days)
     else:
         csv_data = csv_data.reset_index(drop=True)
 
@@ -103,7 +110,7 @@ def convert_to_tensor(dataset):
     return torch.tensor(dataset.values).to(device).float()
 
 
-def _add_history_data(csv_data, title_list):
+def _add_history_data(csv_data, title_list, rolling_days):
     for days in rolling_days:
         csv_data['pctChg_' + str(days)] = csv_data['pctChg'].rolling(days).sum()
         title_list.append('pctChg_' + str(days))
