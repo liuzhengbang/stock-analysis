@@ -4,13 +4,14 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from data_provider.data_constructor import convert_to_tensor
+from data_provider.data_constructor import convert_to_tensor, construct_dataset, DataException
 from train.net import NeuralNetwork as Net
 
 device = torch.device('cuda:0')
 
 
-def train_model(loader, x_test, y_test, prev_model=None, num_iterations=2000, learning_rate=0.9, weight=1, print_cost=False):
+def train_model(loader, x_test, y_test, prev_model=None, num_iterations=2000, learning_rate=0.9, weight=1,
+                print_cost=False):
     print("start training")
 
     model = Net(x_test.shape[1]).to(device=device)
@@ -73,6 +74,25 @@ def predict(module, source):
     return y_prediction
 
 
+def predict_with_prob(module, source):
+    m = source.shape[0]
+    y_prediction = torch.zeros((m, 1), device=device)
+    prob = -1
+    ret = module.forward(source)
+    for i in range(ret.shape[0]):
+        prob = round(ret[i, 0].item(), 5)
+
+        # Convert probabilities A[0,i] to actual predictions p[0,i] For Sigmoid
+        if ret[i, 0] <= 0.0:
+            y_prediction[i, 0] = 0
+        else:
+            y_prediction[i, 0] = 1
+
+    assert (y_prediction.shape == (m, 1))
+
+    return y_prediction.item(), prob
+
+
 def validate(module, source, y_test):
     y_prediction = predict(module, source)
     total_sample = source.shape[0]
@@ -103,3 +123,21 @@ def validate(module, source, y_test):
     recall = round(recall, 2)
 
     return accuracy, precision, recall
+
+
+def validate_model(model_name, stock_list, index_list_analysis):
+    model = None
+    for stock in stock_list:
+        try:
+            x_test, y_test = construct_dataset(stock, index_list_analysis, return_data=True)
+        except DataException:
+            continue
+        if model is None:
+            model = Net(x_test.shape[1]).to(device=device)
+            model.load_state_dict(torch.load("model_data/" + model_name))
+            model.to(device)
+
+        with torch.no_grad():
+            accuracy, precision, recall = validate(model, x_test, y_test)
+        print("stock {}: total sample {}, positive sample {}, accuracy {}%, precision {}%, recall {}%"
+              .format(stock, len(x_test), sum(y_test).item(), accuracy, precision, recall))

@@ -100,10 +100,54 @@ def construct_dataset(code, index_code_list, predict_days=None, thresholds=None,
         dataset_y = pd.DataFrame(csv_data, columns=['result'])
 
         return convert_to_tensor(dataset_x), convert_to_tensor(dataset_y)
-    # # dataset_x = __convert_to_tensor__(dataset_x)
-    # # dataset_y = __convert_to_tensor__(dataset_y)
-    #
-    # return dataset_x, dataset_y
+
+
+def construct_predict_data(code, index_code_list,
+                           append_history=True,
+                           append_index=True,
+                           rolling_days=None,
+                           ):
+    if rolling_days is None:
+        rolling_days = default_rolling_days
+    if append_history:
+        history_length = rolling_days[len(rolling_days) - 1]
+    else:
+        history_length = 1
+
+    try:
+        csv_data = read_individual_csv(code)
+    except FileNotFoundError:
+        raise DataException(code)
+    except pd.errors.EmptyDataError:
+        raise DataException(code)
+
+    if len(csv_data) < max(rolling_days):
+        raise DataException(code)
+
+    _normalize_individual(csv_data)
+
+    title_list = individual_cols_sel.copy()
+
+    if append_index:
+        for index_code in index_code_list:
+            index_data = read_index_csv(index_code)
+            _normalize_index(index_data)
+
+            csv_data = pd.merge(csv_data, index_data, how="inner", on="date", suffixes=('', '_' + index_code))
+            for sel in index_cols_sel:
+                title_list.append(sel + '_' + index_code)
+
+        _add_history_data(csv_data, title_list, rolling_days)
+    else:
+        csv_data = csv_data.reset_index(drop=True)
+
+    if append_history:
+        csv_data.drop(labels=range(0, history_length - 1), axis=0, inplace=True)
+
+    csv_data = pd.DataFrame(csv_data).tail(1)
+    csv_data = csv_data.reset_index(drop=True)
+    predict_data = pd.DataFrame(csv_data, columns=title_list)
+    return convert_to_tensor(predict_data), csv_data['date'].item()
 
 
 def convert_to_tensor(dataset):
@@ -123,7 +167,7 @@ def _add_predicts_days(csv_data, predict_days, thresholds):
         days = predict_days[index]
         threshold = thresholds[index]
         csv_data['predict' + str(days)] = \
-            (csv_data['close'].rolling(days).mean().shift(-days) - csv_data['close'])/csv_data['close']
+            (csv_data['close'].rolling(days).mean().shift(-days) - csv_data['close']) / csv_data['close']
         if threshold > 0:
             if index == 0:
                 csv_data['result'] = csv_data.apply(

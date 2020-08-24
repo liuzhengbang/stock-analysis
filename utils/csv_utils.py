@@ -116,10 +116,13 @@ def get_stock_code_list(stock):
     return ret.values.flatten().tolist()
 
 
-def get_stock_code_list_by_industry(industry):
+def get_stock_code_list_by_industry(industry_list):
+    return_list = []
     ret = pd.read_csv(STOCK_DATA_DIR_BASE + "all_stocks.csv", encoding="gbk")
-    ret = ret[(ret.industry == industry)]
-    return ret['code'].values.flatten().tolist()
+    for industry in industry_list:
+        temp = ret[(ret.industry == industry)]
+        return_list = return_list + temp['code'].values.flatten().tolist()
+    return return_list
 
 
 def save_filtered_stock_list(stock_list):
