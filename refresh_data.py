@@ -1,7 +1,8 @@
+# coding=gbk
 from stock_query.stock import prepare_data
-from utils.csv_utils import get_all_stocks_code_list
+from utils.csv_utils import get_all_stocks_code_list, get_stock_code_list_by_industry
 
-append_mode = True
+append_mode = False
 
 index_list_query = ["sh.000001",
                     "sz.399106",

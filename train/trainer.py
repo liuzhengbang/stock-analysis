@@ -51,8 +51,10 @@ def train_model(loader, x_test, y_test, prev_model=None, num_iterations=2000, le
     print("Test Dataset Accuracy:", accuracy, "Precision:", precision, "Recall:", recall)
 
     str_time = time.strftime('%Y-%m-%d-%H-%M-%S', time.localtime(time.time()))
+    model_file_name = str_time + "-" + str(accuracy) + "-" + str(precision) + "-" + str(recall) + "-model.pt"
+    print("save model as:", model_file_name)
     torch.save(model.state_dict(),
-               "model_data/" + str_time + "-" + str(accuracy) + "-" + str(precision) + "-" + str(recall) + "-model.pt")
+               "model_data/" + model_file_name)
 
     return model
 
@@ -141,3 +143,36 @@ def validate_model(model_name, stock_list, index_list_analysis):
             accuracy, precision, recall = validate(model, x_test, y_test)
         print("stock {}: total sample {}, positive sample {}, accuracy {}%, precision {}%, recall {}%"
               .format(stock, len(x_test), sum(y_test).item(), accuracy, precision, recall))
+
+
+def save(model, epoch, optimizer, loss, accuracy, precision, recall):
+    str_time = time.strftime('%Y-%m-%d-%H-%M-%S', time.localtime(time.time()))
+    path = str_time + "-" + str(accuracy) + "-" + str(precision) + "-" + str(recall) + "-model.pt"
+    print("save model as:", path)
+
+    torch.save({
+        'epoch': epoch,
+        'model_state_dict': model.state_dict(),
+        'optimizer_state_dict': optimizer.state_dict(),
+        'loss': loss,
+        'test accuracy': accuracy,
+        'test precision': precision,
+        'test recall': recall
+    }, path)
+
+
+def load(input_size, path):
+    model = Net(input_size)
+    optimizer = torch.optim.Adam(model.parameters())
+
+    checkpoint = torch.load(path)
+    model.load_state_dict(checkpoint['model_state_dict'])
+    optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+    epoch = checkpoint['epoch']
+    loss = checkpoint['loss']
+    accuracy = checkpoint['test accuracy']
+    precision = checkpoint['test precision']
+    recall = checkpoint['test recall']
+    print("load model from", path, "with test accuracy", accuracy, "precision", precision, "recall", recall)
+
+    return model, optimizer, epoch, loss

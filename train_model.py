@@ -36,14 +36,14 @@ def filter_list(stock_list):
     print("total stock num:", len(stock_list))
 
 
-need_refresh_data = False
+# need_refresh_data = False
+#
+# if need_refresh_data:
+#     all_stock_list = get_all_stocks_code_list()
+# else:
+#     all_stock_list = load_filtered_stock_list()
 
-if need_refresh_data:
-    all_stock_list = get_all_stocks_code_list()
-else:
-    all_stock_list = load_filtered_stock_list()
-
-all_stock_list = get_stock_code_list_by_industry(["银行"])
+# all_stock_list = get_stock_code_list_by_industry(["银行"])
 
 
 # construct_temp_csv_data(all_stock_list, index_list_analysis)
@@ -79,7 +79,9 @@ class TrainingDataset(Dataset):
 
 
 def train():
-    all_stock_list.remove("sh.600000")
+    stock_list = get_stock_code_list_by_industry(["银行"])
+    stock_list.remove("sh.600000")
+    # construct_temp_csv_data(stock_list, index_list_analysis)
     x_test, y_test = construct_dataset("sh.600000", index_list_analysis, return_data=True)
     # # # x_test, y_test = construct_dataset("test", index_list_analysis)
     # # print("all stocks being trained", all_stock_list)
@@ -87,10 +89,11 @@ def train():
     neg_dataset = load_temp_negative_data()
     dataset = TrainingDataset(pos_dataset, neg_dataset)
     loader = DataLoader(dataset, batch_size=2000, num_workers=0, shuffle=False)
-    train_model(loader, x_test, y_test, prev_model="2020-08-18-22-50-30-57.4-8.73-6.9-model.pt",
-                num_iterations=200, learning_rate=0.00001, weight=1, print_cost=True)
+    train_model(loader, x_test, y_test, prev_model=None,
+                num_iterations=1000, learning_rate=0.00001, weight=1, print_cost=True)
 
 
-# train()
-validate_model("2020-08-18-05-32-56-84.23-13.22-2.26-model-bank.pt",
-               all_stock_list, index_list_analysis)
+train()
+# all_stock_list = get_stock_code_list_by_industry(["银行"])
+# validate_model("2020-08-25-22-27-56-81.08-5.71-1.27-model.pt",
+#                all_stock_list, index_list_analysis)

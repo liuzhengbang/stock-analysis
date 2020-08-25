@@ -12,6 +12,8 @@ index_cols_sel = ['open', 'high', 'low', 'close', 'volume', 'amount']
 index_cols_norm = [1000., 1000., 1000., 1000., 100000000., 100000000.]
 
 device = torch.device('cuda:0')
+# default_rolling_days = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 17, 20, 25, 30, 45, 60, 75,
+#                         100, 150, 225, 300, 400, 500, 600, 700, 800, 900, 1000]
 default_rolling_days = [2, 3, 4, 5, 6, 7, 10, 15, 20, 25, 30, 60, 100, 300, 600, 1000]
 
 
@@ -27,9 +29,11 @@ def construct_dataset(code, index_code_list, predict_days=None, thresholds=None,
                       append_history=True,
                       append_index=True,
                       rolling_days=None,
+                      predict_type="average",
                       return_data=False):
     """
 
+    :param predict_type:
     :param append_history:
     :param rolling_days:
     :param thresholds:
@@ -50,7 +54,7 @@ def construct_dataset(code, index_code_list, predict_days=None, thresholds=None,
     if predict_days is None:
         predict_days = [5]
     if append_history:
-        history_length = rolling_days[len(rolling_days) - 1]
+        history_length = max(rolling_days)
     else:
         history_length = 1
 
@@ -79,7 +83,6 @@ def construct_dataset(code, index_code_list, predict_days=None, thresholds=None,
                 title_list.append(sel + '_' + index_code)
 
         if len(csv_data) <= max(predict_days):
-            print(len(csv_data))
             raise DataException(code)
 
         _add_history_data(csv_data, title_list, rolling_days)
@@ -91,7 +94,10 @@ def construct_dataset(code, index_code_list, predict_days=None, thresholds=None,
 
     csv_data = csv_data.reset_index(drop=True)
 
-    _add_predicts_days(csv_data, predict_days, thresholds)
+    if predict_type == "average":
+        _add_average_predicts(csv_data, predict_days, thresholds)
+    elif predict_type == "max":
+        _add_max_predicts(csv_data, predict_days, thresholds)
 
     if not return_data:
         _save_temp_data_to_csv_file(csv_data, title_list)
@@ -162,7 +168,7 @@ def _add_history_data(csv_data, title_list, rolling_days):
         title_list.append('volume_' + str(days))
 
 
-def _add_predicts_days(csv_data, predict_days, thresholds):
+def _add_average_predicts(csv_data, predict_days, thresholds):
     for index in range(len(predict_days)):
         days = predict_days[index]
         threshold = thresholds[index]
@@ -174,7 +180,7 @@ def _add_predicts_days(csv_data, predict_days, thresholds):
                     lambda x: 1.0 if x['predict' + str(days)] > threshold else 0.0, axis=1)
             else:
                 csv_data['result'] = csv_data.apply(
-                    lambda x: 1.0 if (x['predict' + str(days)] > threshold and csv_data['result'] == 1.0)
+                    lambda x: 1.0 if (x['predict' + str(days)] > threshold and x['result'] == 1.0)
                     else 0.0, axis=1)
         else:
             if index == 0:
@@ -182,13 +188,40 @@ def _add_predicts_days(csv_data, predict_days, thresholds):
                     lambda x: 1.0 if x['predict' + str(days)] < threshold else 0.0, axis=1)
             else:
                 csv_data['result'] = csv_data.apply(
-                    lambda x: 1.0 if (x['predict' + str(days)] < threshold and csv_data['result'] == 1.0)
+                    lambda x: 1.0 if (x['predict' + str(days)] < threshold and x['result'] == 1.0)
                     else 0.0, axis=1)
 
     end_index = len(csv_data)
     drop_days = max(predict_days)
     csv_data.drop(labels=range(end_index - drop_days, end_index), inplace=True)
 
+
+def _add_max_predicts(csv_data, predict_days, thresholds):
+    for index in range(len(predict_days)):
+        days = predict_days[index]
+        threshold = thresholds[index]
+        csv_data['predict' + str(days)] = \
+            (csv_data['close'].rolling(days).max().shift(-days) - csv_data['close']) / csv_data['close']
+        if threshold > 0:
+            if index == 0:
+                csv_data['result'] = csv_data.apply(
+                    lambda x: 1.0 if x['predict' + str(days)] > threshold else 0.0, axis=1)
+            else:
+                csv_data['result'] = csv_data.apply(
+                    lambda x: 1.0 if (x['predict' + str(days)] > threshold and x['result'] == 1.0)
+                    else 0.0, axis=1)
+        else:
+            if index == 0:
+                csv_data['result'] = csv_data.apply(
+                    lambda x: 1.0 if x['predict' + str(days)] < threshold else 0.0, axis=1)
+            else:
+                csv_data['result'] = csv_data.apply(
+                    lambda x: 1.0 if (x['predict' + str(days)] < threshold and x['result'] == 1.0)
+                    else 0.0, axis=1)
+
+    end_index = len(csv_data)
+    drop_days = max(predict_days)
+    csv_data.drop(labels=range(end_index - drop_days, end_index), inplace=True)
 
 # def _getDataSet(csv_data, title_list, predict_days, threshold=0.0):
 #     csv_data['predict'] = (csv_data['close'].rolling(predict_days).mean().shift(-predict_days) - csv_data['close']) \

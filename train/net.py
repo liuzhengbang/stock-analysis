@@ -4,16 +4,20 @@ import torch.nn as nn
 
 
 class NeuralNetwork(nn.Module):
-    def __init__(self, input_size):
+    def __init__(self, input_size, layer_para=None):
         """
         In the constructor we instantiate one nn.Linear modules and assign them as
         member variables.
         """
         super(NeuralNetwork, self).__init__()
-        print("input size", input_size)
-        self.linear1 = nn.Linear(input_size, 500)
-        self.linear2 = nn.Linear(500, 1)
-        # self.linear3 = nn.Linear(1000, 1)
+        if layer_para is None:
+            layer_para = [2000, 100]
+
+        self.layer_para = layer_para
+        print("module input size:", input_size)
+        self.linear1 = nn.Linear(input_size, layer_para[0])
+        self.linear2 = nn.Linear(layer_para[0], layer_para[1])
+        self.linear3 = nn.Linear(layer_para[1], 1)
         self.tanh = nn.Tanh()
         self.sm = nn.Sigmoid()
         # self.sm = nn.LeakyReLU()
@@ -28,8 +32,8 @@ class NeuralNetwork(nn.Module):
         pred = self.tanh(pred)
         pred = self.linear2(pred)
         pred = self.tanh(pred)
-        # pred = self.linear3(pred)
-        # pred = self.tanh(pred)
+        pred = self.linear3(pred)
+        pred = self.tanh(pred)
         # pred = self.sm(pred)
         # print(self.linear1.weight.sum())
         return pred
