@@ -49,12 +49,12 @@ def train_model(loader, x_test, y_test, prev_model=None, num_iterations=2000, le
 
     accuracy, precision, recall = validate(model, x_test, y_test)
     print("Test Dataset Accuracy:", accuracy, "Precision:", precision, "Recall:", recall)
-
-    str_time = time.strftime('%Y-%m-%d-%H-%M-%S', time.localtime(time.time()))
-    model_file_name = str_time + "-" + str(accuracy) + "-" + str(precision) + "-" + str(recall) + "-model.pt"
-    print("save model as:", model_file_name)
-    torch.save(model.state_dict(),
-               "model_data/" + model_file_name)
+    save(model, epoch, optimizer, loss, accuracy, precision, recall)
+    # str_time = time.strftime('%Y-%m-%d-%H-%M-%S', time.localtime(time.time()))
+    # model_file_name = str_time + "-" + str(accuracy) + "-" + str(precision) + "-" + str(recall) + "-model.pt"
+    # print("save model as:", model_file_name)
+    # torch.save(model.state_dict(),
+    #            "model_data/" + model_file_name)
 
     return model
 
@@ -158,14 +158,14 @@ def save(model, epoch, optimizer, loss, accuracy, precision, recall):
         'test accuracy': accuracy,
         'test precision': precision,
         'test recall': recall
-    }, path)
+    }, "model_data/" + path)
 
 
 def load(input_size, path):
     model = Net(input_size)
     optimizer = torch.optim.Adam(model.parameters())
 
-    checkpoint = torch.load(path)
+    checkpoint = torch.load("model_data/" + path)
     model.load_state_dict(checkpoint['model_state_dict'])
     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
     epoch = checkpoint['epoch']

@@ -81,16 +81,15 @@ class TrainingDataset(Dataset):
 def train():
     stock_list = get_stock_code_list_by_industry(["ÒøĞĞ"])
     stock_list.remove("sh.600000")
-    # construct_temp_csv_data(stock_list, index_list_analysis)
+    construct_temp_csv_data(stock_list, index_list_analysis)
     x_test, y_test = construct_dataset("sh.600000", index_list_analysis, return_data=True)
-    # # # x_test, y_test = construct_dataset("test", index_list_analysis)
-    # # print("all stocks being trained", all_stock_list)
+
     pos_dataset = load_temp_positive_data()
     neg_dataset = load_temp_negative_data()
     dataset = TrainingDataset(pos_dataset, neg_dataset)
     loader = DataLoader(dataset, batch_size=2000, num_workers=0, shuffle=False)
     train_model(loader, x_test, y_test, prev_model=None,
-                num_iterations=1000, learning_rate=0.00001, weight=1, print_cost=True)
+                num_iterations=100, learning_rate=0.00001, weight=1, print_cost=True)
 
 
 train()
