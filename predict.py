@@ -21,8 +21,7 @@ index_list_analysis = ["sh.000001",
                        ]
 
 predict_stock_list = get_stock_code_list_by_industry(["ÒøÐÐ"])
-model, _, _, _ = load(126, "2020-08-27-05-38-21-94.39-61.96-4.23-model.pt")
-model.to(device)
+model, _, _, _, _ = load("2020-08-27-23-31-41-94.39-61.96-4.22-model.pt")
 
 for stock in predict_stock_list:
     try:
