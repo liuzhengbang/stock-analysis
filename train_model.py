@@ -44,8 +44,8 @@ def train():
     stock_list = get_stock_code_list_by_industry(["ÒøĞĞ"])
     test_list = ["sh.600000"]
     stock_list.remove("sh.600000")
-    # construct_temp_csv_data(stock_list, index_list_analysis,
-    #                         predict_days=predict_days, thresholds=thresholds, predict_type=predict_type)
+    construct_temp_csv_data(stock_list, index_list_analysis,
+                            predict_days=predict_days, thresholds=thresholds, predict_type=predict_type)
     x_test, y_test = construct_dataset("sh.600000", index_list_analysis,
                                        predict_days=predict_days, thresholds=thresholds, predict_type=predict_type,
                                        return_data=True)
