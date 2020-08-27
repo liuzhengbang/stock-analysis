@@ -2,10 +2,10 @@
 import torch
 
 from data_provider.data_constructor import construct_predict_data
-from train.trainer import predict_with_prob
+from net.model import load
+from net.trainer import predict_with_prob
 from utils.csv_utils import get_stock_code_list_by_industry
 from data_provider.data_constructor import convert_to_tensor, construct_dataset, DataException
-from train.net import NeuralNetwork as Net
 
 device = torch.device('cuda:0')
 model_name = "2020-08-18-05-32-56-84.23-13.22-2.26-model-bank.pt"
@@ -21,8 +21,7 @@ index_list_analysis = ["sh.000001",
                        ]
 
 predict_stock_list = get_stock_code_list_by_industry(["ÒøÐÐ"])
-model = Net(94).to(device=device)
-model.load_state_dict(torch.load("model_data/" + model_name))
+model, _, _, _ = load(126, "2020-08-27-05-38-21-94.39-61.96-4.23-model.pt")
 model.to(device)
 
 for stock in predict_stock_list:

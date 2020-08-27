@@ -26,11 +26,10 @@ class DataException(Exception):
         return repr(self.value)
 
 
-def construct_dataset(code, index_code_list, predict_days=None, thresholds=None,
+def construct_dataset(code, index_code_list, predict_days, thresholds, predict_type,
                       append_history=True,
                       append_index=True,
                       rolling_days=None,
-                      predict_type="average",
                       return_data=False):
     """
     :param predict_type:
@@ -46,13 +45,9 @@ def construct_dataset(code, index_code_list, predict_days=None, thresholds=None,
     :param return_data: return dataset x and y
     :return:
     """
-
+    assert predict_type == "average" or predict_type == "max"
     if rolling_days is None:
         rolling_days = default_rolling_days
-    if thresholds is None:
-        thresholds = [0.05]
-    if predict_days is None:
-        predict_days = [5]
     if append_history:
         history_length = max(rolling_days)
     else:
@@ -279,11 +274,12 @@ def _save_temp_data_to_csv_file(csv_data, title_list):
     save_temp_negative_data(negative_data, title_list)
 
 
-def construct_temp_csv_data(stock_list, index_code_list):
+def construct_temp_csv_data(stock_list, index_code_list, predict_days, thresholds, predict_type):
     delete_temp_data()
     for code in stock_list:
         try:
-            construct_dataset(code, index_code_list)
+            construct_dataset(code, index_code_list,
+                              predict_days=predict_days, thresholds=thresholds, predict_type=predict_type)
             print(code, "processed")
         except DataException:
             print(code, "not processed")

@@ -10,7 +10,8 @@ class TestConstructDataset(unittest.TestCase):
         delete_temp_data()
 
     def test_construct_basic(self):
-        construct_dataset("test", ["index_test"], predict_days=[1], rolling_days=[2, 4], thresholds=[0.1])
+        construct_dataset("test", ["index_test"], predict_type="average", predict_days=[1], rolling_days=[2, 4],
+                          thresholds=[0.1])
         pos_data = load_temp_positive_data()
         neg_data = load_temp_negative_data()
         #          date  result  close  chg_1
@@ -46,7 +47,8 @@ class TestConstructDataset(unittest.TestCase):
         self.assertAlmostEqual(pos_data['open_index_test'].tolist()[0], 3.3415276)
 
     def test_construct_predict_average_pos(self):
-        construct_dataset("test_1", ["index_test"], predict_days=[1, 3], rolling_days=[2], thresholds=[0.07, 0.01])
+        construct_dataset("test_1", ["index_test"], predict_type="average", predict_days=[1, 3], rolling_days=[2],
+                          thresholds=[0.07, 0.01])
         pos_data = load_temp_positive_data()
         neg_data = load_temp_negative_data()
 
@@ -70,7 +72,8 @@ class TestConstructDataset(unittest.TestCase):
                                   'pctChg_2', 'volume_2'])
 
     def test_construct_predict_average_neg(self):
-        construct_dataset("test_1", ["index_test"], predict_days=[1, 3], rolling_days=[2], thresholds=[-0.08, -0.01])
+        construct_dataset("test_1", ["index_test"], predict_type="average", predict_days=[1, 3], rolling_days=[2],
+                          thresholds=[-0.08, -0.01])
         pos_data = load_temp_positive_data()
         neg_data = load_temp_negative_data()
 
@@ -94,7 +97,8 @@ class TestConstructDataset(unittest.TestCase):
                                   'pctChg_2', 'volume_2'])
 
     def test_construct_predict_average_equal(self):
-        construct_dataset("test_1", ["index_test"], predict_days=[1, 3], rolling_days=[2], thresholds=[0, 0])
+        construct_dataset("test_1", ["index_test"], predict_type="average",
+                          predict_days=[1, 3], rolling_days=[2], thresholds=[0, 0])
         pos_data = load_temp_positive_data()
         neg_data = load_temp_negative_data()
 
