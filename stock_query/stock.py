@@ -1,5 +1,5 @@
 from stock_query.stock_query import *
-from stock_query.stock_utils import *
+from stock_query.stock_helper import *
 
 
 def prepare_data(individual_day_k_list, index_day_k_list, append=True):

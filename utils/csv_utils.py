@@ -111,6 +111,11 @@ def get_all_stocks_code_list():
     return ret.values.flatten().tolist()
 
 
+def get_all_stocks_code_and_name():
+    ret = pd.read_csv(STOCK_DATA_DIR_BASE + "all_stocks.csv", usecols=["code", "code_name"], encoding='gbk')
+    return ret
+
+
 def get_stock_code_list(stock):
     ret = pd.read_csv(STOCK_DATA_DIR_BASE + stock + "_stocks.csv", usecols=["code"])
     return ret.values.flatten().tolist()

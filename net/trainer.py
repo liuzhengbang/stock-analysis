@@ -1,20 +1,27 @@
 import torch
 import torch.nn as nn
+from torch.utils.data import DataLoader
 
-from data_provider.data_constructor import  construct_dataset, DataException
+from data_provider.data_constructor import construct_dataset, DataException
 from net.model import save, load
 from net.net import NeuralNetwork as Net
 from torch.utils.data.dataset import Dataset
+
+from utils.stock_utils import get_code_name
+
 device = torch.device('cuda:0')
 
 
 class TrainingDataset(Dataset):
     def __init__(self, positive_data, negative_data):
+        self.val = False
         self.pos_data = positive_data
         self.neg_data = negative_data
         self.pos_length = len(self.pos_data)
         self.neg_length = len(self.neg_data)
         self.length = max(self.pos_length, self.neg_length) * 2
+        print("training dataset length:", self.pos_length + self.neg_length,
+              "with pos", self.pos_length, "neg", self.neg_length)
 
     def __getitem__(self, ndx):
         index = ndx // 2
@@ -33,9 +40,39 @@ class TrainingDataset(Dataset):
         return self.length
 
 
-def train_model(loader, x_test, y_test, param, prev_model=None, num_iterations=2000, learning_rate=0.9, weight=1,
+class ValidationDataset(Dataset):
+    def __init__(self, positive_data, negative_data):
+        self.val = False
+        self.pos_data = positive_data
+        self.neg_data = negative_data
+        self.pos_length = len(self.pos_data)
+        self.neg_length = len(self.neg_data)
+        self.length = len(self.pos_data) + len(self.neg_data)
+        print("validation dataset length:", self.length,
+              "with pos", self.pos_length, "neg", self.neg_length)
+
+    def __getitem__(self, ndx):
+        if ndx < self.pos_length:
+            return self.pos_data.values[ndx], torch.tensor([1.0])
+        else:
+            ndx = ndx - self.pos_length
+            return self.neg_data.values[ndx], torch.tensor([0.0])
+
+    def __len__(self):
+        # print("length", self.length)
+        return self.length
+
+
+def train_model(train_dataset, val_dataset, x_test, y_test, param, prev_model=None,
+                batch_size=2000,
+                num_iterations=2000, learning_rate=0.9,
+                weight=1,
                 print_cost=False):
     print("start training")
+    loader = DataLoader(train_dataset, batch_size=batch_size, num_workers=0, shuffle=False)
+    val_loader = None
+    if val_dataset is not None:
+        val_loader = DataLoader(val_dataset, batch_size=20000, num_workers=0, shuffle=False)
 
     if prev_model is not None:
         model, optimizer, epoch_prev, loss, param_prev = load(prev_model)
@@ -54,6 +91,7 @@ def train_model(loader, x_test, y_test, param, prev_model=None, num_iterations=2
     pos_weight = torch.tensor([weight]).to(device)
     criterion = nn.BCEWithLogitsLoss(weight=pos_weight)
     epoch = 0
+    max_precision = 30
 
     # Training the Model
     for epoch in range(num_iterations):
@@ -66,19 +104,53 @@ def train_model(loader, x_test, y_test, param, prev_model=None, num_iterations=2
             loss.backward()
             optimizer.step()
 
-        if print_cost and epoch % 10 == 0:
+        if print_cost and epoch % 100 == 0:
             grad_sum = torch.tensor(0.0)
             for p in model.parameters():
                 grad_sum += p.grad.norm()
             with torch.no_grad():
-                accuracy, precision, recall = validate(model, x_test, y_test)
-            print("Loss after iteration {} with loss: {:.6f}, grad sum: {:.6f},"
-                  " test accuracy {}%, precision {}%, recall {}%"
-                  .format(epoch, loss.data, grad_sum.data, accuracy, precision, recall))
+                model.eval()
+                test_accuracy, test_precision, test_recall = validate(model, x_test, y_test)
+                val_accuracy = 0
+                val_precision = 0
+                val_recall = 0
+                if val_dataset is not None:
+                    for x_val, y_val in val_loader:
+                        x_val = x_val.to(device).float()
+                        y_val = y_val.to(device).float()
 
-    accuracy, precision, recall = validate(model, x_test, y_test)
-    print("Test Dataset Accuracy:", accuracy, "Precision:", precision, "Recall:", recall)
-    save(model, param, epoch + epoch_prev + 1, optimizer, loss, accuracy, precision, recall)
+                        temp_val_accuracy, temp_val_precision, temp_val_recall = validate(model, x_val, y_val)
+                        val_accuracy = val_accuracy + temp_val_accuracy * len(x_val) / len(val_dataset)
+                        val_precision = val_precision + temp_val_precision * len(x_val) / len(val_dataset)
+                        val_recall = val_recall + temp_val_recall * len(x_val) / len(val_dataset)
+            if val_dataset is not None:
+                print("Loss after iteration {} with loss: {:.6f}, grad sum: {:.6f},"
+                      " [test] accuracy {}%, precision {}%, recall {}%"
+                      " [validation] accuracy {:.2f}%, precision {:.2f}%, recall {:.2f}%"
+                      .format(epoch, loss.data, grad_sum.data,
+                              test_accuracy, test_precision, test_recall,
+                              val_accuracy, val_precision, val_recall))
+                if val_precision > max_precision:
+                    save(model, param, epoch + epoch_prev + 1, optimizer, loss,
+                         val_accuracy, val_precision, val_recall,
+                         test_accuracy, test_precision, test_recall)
+                    max_precision = val_precision
+            else:
+                print("Loss after iteration {} with loss: {:.6f}, grad sum: {:.6f},"
+                      " test accuracy {}%, precision {}%, recall {}%"
+                      .format(epoch, loss.data, grad_sum.data,
+                              test_accuracy, test_precision, test_recall))
+                if test_precision > max_precision:
+                    save(model, param, epoch + epoch_prev + 1, optimizer, loss,
+                         "NA", "NA", "NA",
+                         test_accuracy, test_precision, test_recall)
+                    max_precision = val_precision
+
+    test_accuracy, test_precision, test_recall = validate(model, x_test, y_test)
+    print("Test Dataset Accuracy:", test_accuracy, "Precision:", test_precision, "Recall:", test_recall)
+    save(model, param, epoch + epoch_prev + 1, optimizer, loss,
+         val_accuracy, val_precision, val_recall,
+         test_accuracy, test_precision, test_recall)
 
     return model
 
@@ -156,15 +228,14 @@ def validate_model(model_name, stock_list, index_list_analysis, predict_days, th
     for stock in stock_list:
         try:
             x_test, y_test = construct_dataset(stock, index_list_analysis,
-                                               predict_days=predict_days, thresholds=thresholds, predict_type=predict_type,
+                                               predict_days=predict_days, thresholds=thresholds,
+                                               predict_type=predict_type,
                                                return_data=True)
         except DataException:
             continue
 
         with torch.no_grad():
+            code_name = get_code_name(stock)
             accuracy, precision, recall = validate(model, x_test, y_test)
-        print("stock {}: total sample {}, positive sample {}, accuracy {}%, precision {}%, recall {}%"
-              .format(stock, len(x_test), sum(y_test).item(), accuracy, precision, recall))
-
-
-
+        print("stock {} {}: total sample {}, positive sample {}, accuracy {}%, precision {}%, recall {}%"
+              .format(stock, code_name, len(x_test), sum(y_test).item(), accuracy, precision, recall))
