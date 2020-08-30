@@ -47,7 +47,10 @@ def save(model, param, epoch, optimizer, loss,
          val_accuracy, val_precision, val_recall,
          test_accuracy, test_precision, test_recall):
     str_time = time.strftime('%Y-%m-%d-%H-%M-%S', time.localtime(time.time()))
-    path = str_time + "-" + str(val_accuracy) + "-" + str(val_precision) + "-" + str(val_recall) + "-model.pt"
+    path = str_time + "-" + "%.2f" % val_accuracy \
+                    + "-" + "%.2f" % val_precision \
+                    + "-" + "%.2f" % val_recall\
+                    + "-model.pt"
     print("save model as:", path)
 
     torch.save({
@@ -66,10 +69,10 @@ def save(model, param, epoch, optimizer, loss,
 
 
 def load(path):
-    if isfile(MODEL_DATA_PERMANENT_BASE + path):
-        whole_path = MODEL_DATA_PERMANENT_BASE + path
+    if isfile(MODEL_DATA_PERMANENT_BASE + path + ".pt"):
+        whole_path = MODEL_DATA_PERMANENT_BASE + path + '.pt'
     else:
-        whole_path = MODEL_DATA_BASE + path
+        whole_path = MODEL_DATA_BASE + path + '.pt'
     checkpoint = torch.load(whole_path)
     param = checkpoint['param']
     model = Net(param.get_x_size(), param.get_net_param()).to(device=device)
@@ -80,6 +83,7 @@ def load(path):
     epoch = checkpoint['epoch']
     loss = checkpoint['loss']
     print("load model from", path, "type", param.dataset_type, "total iterations", checkpoint['epoch'])
+    print("model predict days", param.predict_days, "threshold", param.thresholds, "predict type", param.predict_type)
     try:
         val_accuracy = checkpoint['val accuracy']
         val_precision = checkpoint['val precision']

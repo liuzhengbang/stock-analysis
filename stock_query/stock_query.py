@@ -1,6 +1,6 @@
 import baostock as bs
 from utils.csv_utils import write_individual, get_csv_latest_date, get_next_day_str, get_today_str, individual_name, \
-    index_name, write_index, save_stock_code_to_csv
+    index_name, write_index, save_stock_code_to_csv, SHIBOR_CSV, write_shibor
 
 
 def query_individual_day_k_data(code, start="2000-01-01", append=True):
@@ -17,22 +17,23 @@ def query_individual_day_k_data(code, start="2000-01-01", append=True):
                 start = get_next_day_str(current_end)
 
     rs = bs.query_history_k_data_plus(code,
-                                      "date,"
-                                      "code,"
-                                      "open,"
-                                      "high,"
-                                      "low,"
-                                      "close,"
-                                      "preclose,"
-                                      "volume,"
-                                      "amount,"
-                                      "turn,"
-                                      "tradestatus,"
-                                      "pctChg,"
-                                      "peTTM,"
-                                      "pbMRQ,"
-                                      "psTTM,"
-                                      "pcfNcfTTM",
+                                      'date,'
+                                      'code,'
+                                      'open,'
+                                      'high,'
+                                      'low,'
+                                      'close,'
+                                      'preclose,'
+                                      'volume,'
+                                      'amount,'
+                                      'turn,'
+                                      'tradestatus,'
+                                      'pctChg,'
+                                      'peTTM,'
+                                      'pbMRQ,'
+                                      'psTTM,'
+                                      'pcfNcfTTM,'
+                                      'isST',
                                       start_date=start,
                                       frequency="d",
                                       adjustflag="3"
@@ -41,7 +42,6 @@ def query_individual_day_k_data(code, start="2000-01-01", append=True):
         print('query_history_k_data_plus respond error_code:' + rs.error_code)
         print('query_history_k_data_plus respond error_msg:' + rs.error_msg)
         return
-
     result = write_individual(code, rs, append=append)
     if append:
         print("individual stock [", code, "] is updated")
@@ -89,6 +89,30 @@ def query_index_day_k_data(code, start="2000-01-01", append=True):
         print("index [", code, "] is updated")
     else:
         print("index [", code, "] is fully updated")
+
+    return result
+
+
+def query_shibor(start="2000-01-01", append=True):
+    if append:
+        current_end = get_csv_latest_date(SHIBOR_CSV)
+
+        if current_end == 0:
+            append = False
+        else:
+            if current_end == get_today_str():
+                print("shibor is already latest")
+                return
+            else:
+                start = get_next_day_str(current_end)
+
+    rs = bs.query_shibor_data(start_date=start)
+
+    result = write_shibor(rs, append=append)
+    if append:
+        print("shibor is updated")
+    else:
+        print("shibor is fully updated")
 
     return result
 

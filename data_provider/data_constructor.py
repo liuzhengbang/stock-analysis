@@ -3,6 +3,7 @@ import pandas as pd
 
 from utils.csv_utils import read_individual_csv, read_index_csv, save_temp_positive_data, delete_temp_data, \
     save_temp_negative_data
+from utils.stock_utils import get_code_name
 
 individual_cols_sel = ['open', 'close', 'amount', 'high', 'low', 'volume',
                        'peTTM', 'pbMRQ']
@@ -30,8 +31,10 @@ def construct_dataset(code, index_code_list, predict_days, thresholds, predict_t
                       append_history=True,
                       append_index=True,
                       rolling_days=None,
+                      save_data_to_csv=False,
                       return_data=False):
     """
+    :param save_data_to_csv:
     :param predict_type:
     :param append_history:
     :param rolling_days:
@@ -59,6 +62,10 @@ def construct_dataset(code, index_code_list, predict_days, thresholds, predict_t
         raise DataException(code)
     except pd.errors.EmptyDataError:
         raise DataException(code)
+
+    csv_data = csv_data[csv_data.tradestatus == 1]
+    csv_data = csv_data[csv_data.isST == 0]
+    csv_data = csv_data.reset_index(drop=True)
 
     if len(csv_data) < max(rolling_days) + max(predict_days):
         raise DataException(code)
@@ -93,6 +100,9 @@ def construct_dataset(code, index_code_list, predict_days, thresholds, predict_t
         _add_average_predicts(csv_data, predict_days, thresholds)
     elif predict_type == "max":
         _add_max_predicts(csv_data, predict_days, thresholds)
+
+    if save_data_to_csv:
+        csv_data.to_csv("temp/" + code + "_temp.csv")
 
     if not return_data:
         _save_temp_data_to_csv_file(csv_data, title_list)
@@ -169,23 +179,23 @@ def _add_average_predicts(csv_data, predict_days, thresholds):
     for index in range(len(predict_days)):
         days = predict_days[index]
         threshold = thresholds[index]
-        csv_data['chg_' + str(days)] = \
+        csv_data['avg_chg_' + str(days)] = \
             (csv_data['close'].rolling(days).mean().shift(-days) - csv_data['close']) / csv_data['close']
         if threshold >= 0:
             if index == 0:
                 csv_data['result'] = csv_data.apply(
-                    lambda x: 1.0 if x['chg_' + str(days)] > threshold else 0.0, axis=1)
+                    lambda x: 1.0 if x['avg_chg_' + str(days)] > threshold else 0.0, axis=1)
             else:
                 csv_data['result'] = csv_data.apply(
-                    lambda x: 1.0 if (x['chg_' + str(days)] > threshold and x['result'] == 1.0)
+                    lambda x: 1.0 if (x['avg_chg_' + str(days)] > threshold and x['result'] == 1.0)
                     else 0.0, axis=1)
         else:
             if index == 0:
                 csv_data['result'] = csv_data.apply(
-                    lambda x: 1.0 if x['chg_' + str(days)] < threshold else 0.0, axis=1)
+                    lambda x: 1.0 if x['avg_chg_' + str(days)] < threshold else 0.0, axis=1)
             else:
                 csv_data['result'] = csv_data.apply(
-                    lambda x: 1.0 if (x['chg_' + str(days)] < threshold and x['result'] == 1.0)
+                    lambda x: 1.0 if (x['avg_chg_' + str(days)] < threshold and x['result'] == 1.0)
                     else 0.0, axis=1)
 
     end_index = len(csv_data)
@@ -200,24 +210,24 @@ def _add_max_predicts(csv_data, predict_days, thresholds):
         threshold = thresholds[index]
 
         if threshold >= 0:
-            csv_data['chg_' + str(days)] = \
+            csv_data['max_chg_' + str(days)] = \
                 (csv_data['high'].rolling(days).max().shift(-days) - csv_data['close']) / csv_data['close']
             if index == 0:
                 csv_data['result'] = csv_data.apply(
-                    lambda x: 1.0 if x['chg_' + str(days)] > threshold else 0.0, axis=1)
+                    lambda x: 1.0 if x['max_chg_' + str(days)] > threshold else 0.0, axis=1)
             else:
                 csv_data['result'] = csv_data.apply(
-                    lambda x: 1.0 if (x['chg_' + str(days)] > threshold and x['result'] == 1.0)
+                    lambda x: 1.0 if (x['max_chg_' + str(days)] > threshold and x['result'] == 1.0)
                     else 0.0, axis=1)
         else:
-            csv_data['chg_' + str(days)] = \
+            csv_data['min_chg_' + str(days)] = \
                 (csv_data['low'].rolling(days).min().shift(-days) - csv_data['close']) / csv_data['close']
             if index == 0:
                 csv_data['result'] = csv_data.apply(
-                    lambda x: 1.0 if x['chg_' + str(days)] < threshold else 0.0, axis=1)
+                    lambda x: 1.0 if x['min_chg_' + str(days)] < threshold else 0.0, axis=1)
             else:
                 csv_data['result'] = csv_data.apply(
-                    lambda x: 1.0 if (x['chg_' + str(days)] < threshold and x['result'] == 1.0)
+                    lambda x: 1.0 if (x['min_chg_' + str(days)] < threshold and x['result'] == 1.0)
                     else 0.0, axis=1)
 
     end_index = len(csv_data)
@@ -280,6 +290,6 @@ def construct_temp_csv_data(stock_list, index_code_list, predict_days, threshold
         try:
             construct_dataset(code, index_code_list,
                               predict_days=predict_days, thresholds=thresholds, predict_type=predict_type)
-            print(code, "processed")
+            print(code, get_code_name(code), "processed")
         except DataException:
-            print(code, "not processed")
+            print(code, get_code_name(code), "not processed")

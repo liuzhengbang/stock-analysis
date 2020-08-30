@@ -2,12 +2,9 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 
-from data_provider.data_constructor import construct_dataset, DataException
 from net.model import save, load
 from net.net import NeuralNetwork as Net
 from torch.utils.data.dataset import Dataset
-
-from utils.stock_utils import get_code_name
 
 device = torch.device('cuda:0')
 
@@ -223,19 +220,3 @@ def validate(module, source, y_test):
     return accuracy, precision, recall
 
 
-def validate_model(model_name, stock_list, index_list_analysis, predict_days, thresholds, predict_type):
-    model, _, _, _, _ = load(model_name)
-    for stock in stock_list:
-        try:
-            x_test, y_test = construct_dataset(stock, index_list_analysis,
-                                               predict_days=predict_days, thresholds=thresholds,
-                                               predict_type=predict_type,
-                                               return_data=True)
-        except DataException:
-            continue
-
-        with torch.no_grad():
-            code_name = get_code_name(stock)
-            accuracy, precision, recall = validate(model, x_test, y_test)
-        print("stock {} {}: total sample {}, positive sample {}, accuracy {}%, precision {}%, recall {}%"
-              .format(stock, code_name, len(x_test), sum(y_test).item(), accuracy, precision, recall))

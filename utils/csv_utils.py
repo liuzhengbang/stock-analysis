@@ -9,6 +9,7 @@ import pandas as pd
 STOCK_DATA_DIR_BASE = "stock_data" + "/"
 INDIVIDUAL_DIR = STOCK_DATA_DIR_BASE + "individual" + "/"
 INDEX_DIR = STOCK_DATA_DIR_BASE + "index" + "/"
+SHIBOR_CSV = STOCK_DATA_DIR_BASE + "shibor.csv"
 FILTERED_STOCK_FILE = STOCK_DATA_DIR_BASE + "filtered_stock_list.csv"
 DAY_K_SUFFIX = "_day_k_data.csv"
 DATE_PATTERN = "%Y-%m-%d"
@@ -62,6 +63,19 @@ def write_index(code, rs, append=False):
 def read_index_csv(code, cols=None):
     ret = pd.read_csv(index_name(code), usecols=cols)
     return ret
+
+
+# shibor
+def write_shibor(rs, append=False):
+    data_list = []
+    while (rs.error_code == '0') & rs.next():
+        data_list.append(rs.get_row_data())
+    result = pd.DataFrame(data_list, columns=rs.fields)
+    if append:
+        result.to_csv(SHIBOR_CSV, mode="a", index=False, header=False)
+    else:
+        result.to_csv(SHIBOR_CSV, index=False)
+    return result
 
 
 # common

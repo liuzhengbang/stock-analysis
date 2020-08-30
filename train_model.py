@@ -7,12 +7,12 @@ from utils.consts import index_list_analysis
 from utils.csv_utils import *
 from data_provider.data_constructor import DataException, \
     construct_dataset, construct_temp_csv_data
-from net.trainer import train_model, validate_model, TrainingDataset, ValidationDataset
+from net.trainer import train_model, TrainingDataset, ValidationDataset
 from utils.stock_utils import get_code_name_list, get_industry_code_list_in_code_set
 
-thresholds = [0.06]
-predict_days = [10]
-predict_type = "average"
+thresholds = [0.15]
+predict_days = [6]
+predict_type = "max"
 validate_dataset = True
 
 
@@ -52,12 +52,11 @@ def train():
 
     test_list = ["sz.002456"]
     # test_list = ["sh.600000"]
-    stock_list.remove("sz.002456")
-    # stock_list.remove("sh.600000")
+    stock_list.remove(test_list[0])
     print("total", len(stock_list), "stocks:")
     print(get_code_name_list(stock_list))
 
-    x_test, y_test = construct_dataset("sz.002456", index_list_analysis,
+    x_test, y_test = construct_dataset(test_list[0], index_list_analysis,
                                        predict_days=predict_days, thresholds=thresholds, predict_type=predict_type,
                                        return_data=True)
     construct_temp_csv_data(stock_list, index_list_analysis,
@@ -82,7 +81,7 @@ def train():
                           predict_days=predict_days, thresholds=thresholds, predict_type=predict_type)
     train_model(train_dataset, val_dataset, x_test, y_test, param,
                 prev_model=None,
-                num_iterations=3000, learning_rate=0.00001, weight=1, print_cost=True)
+                num_iterations=8000, learning_rate=0.00001, weight=1, print_cost=True)
 
 
 train()

@@ -27,4 +27,6 @@ def _merge_list(stock_list_1, stock_list_2):
     set_1 = set(stock_list_1)
     set_2 = set(stock_list_2)
     ret = set_1 & set_2
+    ret = list(ret)
+    ret.sort()
     return list(ret)
