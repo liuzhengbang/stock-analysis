@@ -14,6 +14,7 @@ thresholds = [0.15]
 predict_days = [6]
 predict_type = "max"
 
+
 def filter_list(stock_list):
     print("start filtering stock list")
     for stock in stock_list[::-1]:
@@ -69,7 +70,7 @@ def train():
     total_pos = len(train_pos_data) + len(val_pos_data)
     total_neg = len(train_neg_data) + len(val_neg_data)
     total_sample = total_pos + total_neg
-    pos_frac = round(total_pos/total_sample * 100, 2)
+    pos_frac = round(total_pos / total_sample * 100, 2)
     print("pos samples:", total_pos, ", which is", pos_frac, "% of total", total_sample, "samples")
 
     train_dataset = TrainingDataset(train_pos_data, train_neg_data)

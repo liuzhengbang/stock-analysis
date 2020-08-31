@@ -89,12 +89,11 @@ def construct_dataset(code, index_code_list, predict_days, thresholds, predict_t
 
         if len(csv_data) <= max(predict_days):
             raise DataException(code)
-
-        _add_history_data(csv_data, title_list, rolling_days)
     else:
         csv_data = csv_data.reset_index(drop=True)
 
     if append_history:
+        _add_history_data(csv_data, title_list, rolling_days)
         csv_data.drop(labels=range(0, history_length - 1), axis=0, inplace=True)
 
     csv_data = csv_data.reset_index(drop=True)
@@ -111,9 +110,9 @@ def construct_dataset(code, index_code_list, predict_days, thresholds, predict_t
         _save_temp_data_to_csv_file(csv_data, title_list, val_days)
     else:
         if val_days != 0:
-            csv_data['date'] = pd.to_datetime(csv_data['date'], format='%Y-%m-%d')
-            split_date = datetime.today() + timedelta(days=-val_days)
-            csv_data = (csv_data[(csv_data.date >= split_date)])
+            # csv_data['date'] = pd.to_datetime(csv_data['date'], format='%Y-%m-%d')
+            # split_date = datetime.today() + timedelta(days=-val_days)
+            # csv_data = (csv_data[(csv_data.date >= split_date)])
             dataset_x = pd.DataFrame(csv_data, columns=title_list)
             dataset_y = pd.DataFrame(csv_data, columns=['result'])
 
@@ -122,7 +121,7 @@ def construct_dataset(code, index_code_list, predict_days, thresholds, predict_t
 
 def construct_predict_data(code, index_code_list,
                            append_history=True,
-                           append_index=True,
+                           append_index=False,
                            rolling_days=None,
                            ):
     if rolling_days is None:
@@ -154,12 +153,11 @@ def construct_predict_data(code, index_code_list,
             csv_data = pd.merge(csv_data, index_data, how="inner", on="date", suffixes=('', '_' + index_code))
             for sel in index_cols_sel:
                 title_list.append(sel + '_' + index_code)
-
-        _add_history_data(csv_data, title_list, rolling_days)
     else:
         csv_data = csv_data.reset_index(drop=True)
 
     if append_history:
+        _add_history_data(csv_data, title_list, rolling_days)
         csv_data.drop(labels=range(0, history_length - 1), axis=0, inplace=True)
 
     csv_data = pd.DataFrame(csv_data).tail(1)
