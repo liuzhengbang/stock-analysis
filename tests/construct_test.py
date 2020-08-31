@@ -11,9 +11,10 @@ class TestConstructDataset(unittest.TestCase):
 
     def test_construct_basic(self):
         construct_dataset("test", ["index_test"], predict_type="average", predict_days=[1], rolling_days=[2, 4],
+                          val_days=0,
                           thresholds=[0.1])
-        pos_data = load_temp_positive_data()
-        neg_data = load_temp_negative_data()
+        pos_data = load_temp_data(POSITIVE_CSV)
+        neg_data = load_temp_data(NEGATIVE_CSV)
         #          date  result  close  chg_1
         # 0  2020-08-07     0.0    2.0    0.0
         # 1  2020-08-10     1.0    2.0    0.1
@@ -48,9 +49,10 @@ class TestConstructDataset(unittest.TestCase):
 
     def test_construct_predict_average_pos(self):
         construct_dataset("test_1", ["index_test"], predict_type="average", predict_days=[1, 3], rolling_days=[2],
+                          val_days=0,
                           thresholds=[0.07, 0.01])
-        pos_data = load_temp_positive_data()
-        neg_data = load_temp_negative_data()
+        pos_data = load_temp_data(POSITIVE_CSV)
+        neg_data = load_temp_data(NEGATIVE_CSV)
 
         #          date  result  close     chg_1     chg_3
         # 0  2020-08-05     1.0  0.100  0.100000  0.076667
@@ -73,9 +75,10 @@ class TestConstructDataset(unittest.TestCase):
 
     def test_construct_predict_average_neg(self):
         construct_dataset("test_1", ["index_test"], predict_type="average", predict_days=[1, 3], rolling_days=[2],
+                          val_days=0,
                           thresholds=[-0.08, -0.01])
-        pos_data = load_temp_positive_data()
-        neg_data = load_temp_negative_data()
+        pos_data = load_temp_data(POSITIVE_CSV)
+        neg_data = load_temp_data(NEGATIVE_CSV)
 
         #          date  result  close     chg_1     chg_3
         # 0  2020-08-05     0.0  0.100  0.100000  0.076667
@@ -98,9 +101,10 @@ class TestConstructDataset(unittest.TestCase):
 
     def test_construct_predict_average_equal(self):
         construct_dataset("test_1", ["index_test"], predict_type="average",
-                          predict_days=[1, 3], rolling_days=[2], thresholds=[0, 0])
-        pos_data = load_temp_positive_data()
-        neg_data = load_temp_negative_data()
+                          predict_days=[1, 3], rolling_days=[2],
+                          val_days=0, thresholds=[0, 0])
+        pos_data = load_temp_data(POSITIVE_CSV)
+        neg_data = load_temp_data(NEGATIVE_CSV)
 
         #          date  result  close     chg_1     chg_3
         # 0  2020-08-05     1.0  0.100  0.100000  0.076667
@@ -123,9 +127,9 @@ class TestConstructDataset(unittest.TestCase):
 
     def test_construct_predict_max_pos(self):
         construct_dataset("test_2", ["index_test"], predict_type="max",
-                          predict_days=[1, 3], rolling_days=[2], thresholds=[0.07, 0.01])
-        pos_data = load_temp_positive_data()
-        neg_data = load_temp_negative_data()
+                          predict_days=[1, 3], rolling_days=[2], val_days=0, thresholds=[0.07, 0.01])
+        pos_data = load_temp_data(POSITIVE_CSV)
+        neg_data = load_temp_data(NEGATIVE_CSV)
 
         #          date  result  close   high     chg_1     chg_3
         # 0  2020-08-05     1.0  0.100  0.110  0.130000  0.130000
@@ -148,10 +152,10 @@ class TestConstructDataset(unittest.TestCase):
 
     def test_construct_predict_max_neg(self):
         construct_dataset("test_2", ["index_test"], predict_type="max",
-                          predict_days=[1, 3], rolling_days=[2],
+                          predict_days=[1, 3], rolling_days=[2], val_days=0,
                           thresholds=[-0.04, -0.02])
-        pos_data = load_temp_positive_data()
-        neg_data = load_temp_negative_data()
+        pos_data = load_temp_data(POSITIVE_CSV)
+        neg_data = load_temp_data(NEGATIVE_CSV)
 
         #          date  result  close    low     chg_1     chg_3
         # 0  2020-08-05     0.0  0.100  0.090  0.000000  0.000000
@@ -174,10 +178,10 @@ class TestConstructDataset(unittest.TestCase):
 
     def test_construct_predict_max_equal(self):
         construct_dataset("test_2", ["index_test"], predict_type="max",
-                          predict_days=[1, 3], rolling_days=[2],
+                          predict_days=[1, 3], rolling_days=[2], val_days=0,
                           thresholds=[0, 0])
-        pos_data = load_temp_positive_data()
-        neg_data = load_temp_negative_data()
+        pos_data = load_temp_data(POSITIVE_CSV)
+        neg_data = load_temp_data(NEGATIVE_CSV)
 
         #          date  result  close    low     chg_1     chg_3
         # 0  2020-08-05     1.0  0.100  0.090  0.130000  0.130000

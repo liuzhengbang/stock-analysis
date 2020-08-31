@@ -13,8 +13,6 @@ from utils.stock_utils import get_code_name_list, get_industry_code_list_in_code
 thresholds = [0.15]
 predict_days = [6]
 predict_type = "max"
-validate_dataset = True
-
 
 def filter_list(stock_list):
     print("start filtering stock list")
@@ -62,26 +60,26 @@ def train():
     construct_temp_csv_data(stock_list, index_list_analysis,
                             predict_days=predict_days, thresholds=thresholds, predict_type=predict_type)
 
-    pos_data = load_temp_positive_data()
-    neg_data = load_temp_negative_data()
+    train_pos_data = load_temp_data(POSITIVE_CSV)
+    train_neg_data = load_temp_data(NEGATIVE_CSV)
 
-    print("total pos sample:", len(pos_data), "neg sample:", len(neg_data))
+    val_pos_data = load_temp_data(VAL_POSITIVE_CSV)
+    val_neg_data = load_temp_data(VAL_NEGATIVE_CSV)
 
-    if validate_dataset:
-        train_pos_data, val_pos_data = split_dataset(pos_data)
-        train_neg_data, val_neg_data = split_dataset(neg_data)
+    total_pos = len(train_pos_data) + len(val_pos_data)
+    total_neg = len(train_neg_data) + len(val_neg_data)
+    total_sample = total_pos + total_neg
+    pos_frac = round(total_pos/total_sample * 100, 2)
+    print("pos samples:", total_pos, ", which is", pos_frac, "% of total", total_sample, "samples")
 
-        train_dataset = TrainingDataset(train_pos_data, train_neg_data)
-        val_dataset = ValidationDataset(val_pos_data, val_neg_data)
-    else:
-        train_dataset = TrainingDataset(pos_data, neg_data)
-        val_dataset = None
+    train_dataset = TrainingDataset(train_pos_data, train_neg_data)
+    val_dataset = ValidationDataset(val_pos_data, val_neg_data)
 
     param = TrainingParam(["通信", "电子"], stock_list, test_list, index_list_analysis,
                           predict_days=predict_days, thresholds=thresholds, predict_type=predict_type)
     train_model(train_dataset, val_dataset, x_test, y_test, param,
                 prev_model=None,
-                num_iterations=8000, learning_rate=0.00001, weight=1, print_cost=True)
+                num_iterations=15000, learning_rate=0.00001, weight=1, print_cost=True)
 
 
 train()

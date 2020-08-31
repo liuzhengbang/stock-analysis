@@ -1,8 +1,10 @@
+from datetime import datetime, timedelta
+
 import torch
 import pandas as pd
 
-from utils.csv_utils import read_individual_csv, read_index_csv, save_temp_positive_data, delete_temp_data, \
-    save_temp_negative_data
+from utils.csv_utils import read_individual_csv, read_index_csv, delete_temp_data, save_temp_data, NEGATIVE_CSV, \
+    POSITIVE_CSV, VAL_POSITIVE_CSV, VAL_NEGATIVE_CSV
 from utils.stock_utils import get_code_name
 
 individual_cols_sel = ['open', 'close', 'amount', 'high', 'low', 'volume',
@@ -27,13 +29,14 @@ class DataException(Exception):
         return repr(self.value)
 
 
-def construct_dataset(code, index_code_list, predict_days, thresholds, predict_type,
+def construct_dataset(code, index_code_list, predict_days, thresholds, predict_type, val_days=90,
                       append_history=True,
-                      append_index=True,
+                      append_index=False,
                       rolling_days=None,
                       save_data_to_csv=False,
                       return_data=False):
     """
+    :param val_days:
     :param save_data_to_csv:
     :param predict_type:
     :param append_history:
@@ -105,12 +108,16 @@ def construct_dataset(code, index_code_list, predict_days, thresholds, predict_t
         csv_data.to_csv("temp/" + code + "_temp.csv")
 
     if not return_data:
-        _save_temp_data_to_csv_file(csv_data, title_list)
+        _save_temp_data_to_csv_file(csv_data, title_list, val_days)
     else:
-        dataset_x = pd.DataFrame(csv_data, columns=title_list)
-        dataset_y = pd.DataFrame(csv_data, columns=['result'])
+        if val_days != 0:
+            csv_data['date'] = pd.to_datetime(csv_data['date'], format='%Y-%m-%d')
+            split_date = datetime.today() + timedelta(days=-val_days)
+            csv_data = (csv_data[(csv_data.date >= split_date)])
+            dataset_x = pd.DataFrame(csv_data, columns=title_list)
+            dataset_y = pd.DataFrame(csv_data, columns=['result'])
 
-        return convert_to_tensor(dataset_x), convert_to_tensor(dataset_y)
+            return convert_to_tensor(dataset_x), convert_to_tensor(dataset_y)
 
 
 def construct_predict_data(code, index_code_list,
@@ -172,6 +179,16 @@ def _add_history_data(csv_data, title_list, rolling_days):
         title_list.append('pctChg_' + str(days))
         csv_data['volume_' + str(days)] = csv_data['volume'].rolling(days).mean()
         title_list.append('volume_' + str(days))
+        csv_data['ma_' + str(days)] = csv_data['close'].rolling(days).mean()
+        title_list.append('ma_' + str(days))
+        csv_data['highest_' + str(days)] = csv_data['high'].rolling(days).max()
+        title_list.append('highest_' + str(days))
+        csv_data['lowest_' + str(days)] = csv_data['low'].rolling(days).min()
+        title_list.append('lowest_' + str(days))
+        csv_data['peTTM_' + str(days)] = csv_data['peTTM'].rolling(days).mean()
+        title_list.append('peTTM_' + str(days))
+        csv_data['pbMRQ_' + str(days)] = csv_data['pbMRQ'].rolling(days).mean()
+        title_list.append('pbMRQ_' + str(days))
 
 
 def _add_average_predicts(csv_data, predict_days, thresholds):
@@ -277,11 +294,19 @@ def _convert_pct_chg_to_bool(pct_chg):
             pct_chg[value] = 0.
 
 
-def _save_temp_data_to_csv_file(csv_data, title_list):
-    positive_data = csv_data[csv_data.result == 1.0]
-    save_temp_positive_data(positive_data, title_list)
-    negative_data = csv_data[csv_data.result == 0.0]
-    save_temp_negative_data(negative_data, title_list)
+def _save_temp_data_to_csv_file(csv_data, title_list, val_days):
+    csv_data['date'] = pd.to_datetime(csv_data['date'], format='%Y-%m-%d')
+
+    split_date = datetime.today() + timedelta(days=-val_days)
+    pos_train_data = (csv_data[(csv_data.date < split_date) & (csv_data.result == 1.0)])
+    neg_train_data = (csv_data[(csv_data.date < split_date) & (csv_data.result == 0.0)])
+    pos_val_data = (csv_data[(csv_data.date > split_date) & (csv_data.result == 1.0)])
+    neg_val_data = (csv_data[(csv_data.date > split_date) & (csv_data.result == 0.0)])
+
+    save_temp_data(pos_train_data, title_list, POSITIVE_CSV)
+    save_temp_data(neg_train_data, title_list, NEGATIVE_CSV)
+    save_temp_data(pos_val_data, title_list, VAL_POSITIVE_CSV)
+    save_temp_data(neg_val_data, title_list, VAL_NEGATIVE_CSV)
 
 
 def construct_temp_csv_data(stock_list, index_code_list, predict_days, thresholds, predict_type):

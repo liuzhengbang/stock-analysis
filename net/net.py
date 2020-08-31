@@ -12,7 +12,7 @@ class NeuralNetwork(nn.Module):
         super(NeuralNetwork, self).__init__()
 
         self.layer_para = layer_para
-        # print("module input size:", input_size)
+        print("module input size:", input_size)
         self.linear1 = nn.Linear(input_size, layer_para[0])
         self.linear2 = nn.Linear(layer_para[0], layer_para[1])
         self.linear3 = nn.Linear(layer_para[1], 1)

@@ -2,7 +2,7 @@
 from stock_query.stock import prepare_data
 from utils.csv_utils import get_all_stocks_code_list, get_stock_code_list_by_industry
 
-append_mode = False
+append_mode = True
 
 index_list_query = ["sh.000001",
                     "sz.399106",
@@ -20,6 +20,7 @@ index_list_query = ["sh.000001",
                     "sh.000063",
                     "sh.000011",
                     "sh.000012",
+                    "sh.000159"  # ª¶π…Õ®
                     ]
 
 all_stock_list = get_all_stocks_code_list()

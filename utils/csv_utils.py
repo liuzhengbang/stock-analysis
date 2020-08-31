@@ -17,6 +17,8 @@ DATE_PATTERN = "%Y-%m-%d"
 TEMP_DIR_BASE = "temp" + "/"
 POSITIVE_CSV = TEMP_DIR_BASE + "positive.csv"
 NEGATIVE_CSV = TEMP_DIR_BASE + 'negative.csv'
+VAL_POSITIVE_CSV = TEMP_DIR_BASE + "val_positive.csv"
+VAL_NEGATIVE_CSV = TEMP_DIR_BASE + "val_negative.csv"
 
 
 # individual
@@ -154,23 +156,13 @@ def load_filtered_stock_list():
     return ret.values.flatten().tolist()
 
 
-def save_temp_positive_data(csv_data, columns):
-    is_exist = isfile(POSITIVE_CSV)
-    csv_data.to_csv(POSITIVE_CSV, columns=columns, mode="a", index=False, header=not is_exist)
+def save_temp_data(csv_data, columns, file):
+    is_exist = isfile(file)
+    csv_data.to_csv(file, columns=columns, mode="a", index=False, header=not is_exist)
 
 
-def save_temp_negative_data(csv_data, columns):
-    is_exist = isfile(NEGATIVE_CSV)
-    csv_data.to_csv(NEGATIVE_CSV, columns=columns, mode="a", index=False, header=not is_exist)
-
-
-def load_temp_positive_data():
-    csv_data = pd.read_csv(POSITIVE_CSV, dtype=float)
-    return csv_data
-
-
-def load_temp_negative_data():
-    csv_data = pd.read_csv(NEGATIVE_CSV, dtype=float)
+def load_temp_data(file):
+    csv_data = pd.read_csv(file, dtype=float)
     return csv_data
 
 
@@ -181,3 +173,9 @@ def delete_temp_data():
     if isfile(NEGATIVE_CSV):
         print("delete negative temp csv file")
         os.remove(NEGATIVE_CSV)
+    if isfile(VAL_POSITIVE_CSV):
+        print("delete validation positive temp csv file")
+        os.remove(VAL_POSITIVE_CSV)
+    if isfile(VAL_NEGATIVE_CSV):
+        print("delete validation negative temp csv file")
+        os.remove(VAL_NEGATIVE_CSV)

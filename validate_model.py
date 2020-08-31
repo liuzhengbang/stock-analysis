@@ -37,7 +37,7 @@ def validate_model():
     all_stock_list = get_industry_code_list_in_code_set(["通信", "电子"], "hs300")
     # all_stock_list = get_stock_code_list_by_industry(["通信", "电子"])
     print(all_stock_list)
-    _validate_model_with_stock_list("2020-08-30-22-28-43-91.57-33.98-2.15-model_ele_pos_6_max_0.15",
+    _validate_model_with_stock_list("2020-09-01-00-07-08-84.09-18.84-1.32-model",
                                     all_stock_list, index_list_analysis,
                                     predict_days_in=predict_days,
                                     thresholds_in=thresholds,
@@ -57,5 +57,5 @@ def save_predict_result(code, model):
     y.to_csv("temp/" + code + "_result.csv", header=False, index=True)
 
 
-# save_predict_result("sz.002475", "2020-08-29-20-29-49-96.32-33.13-0.72-model_ele_pos_6_max_0.2.pt")
+# save_predict_result("sz.002475", "2020-08-29-20-29-49-96.32-33.13-0.72-model_ele_pos_6_max_0.2")
 validate_model()

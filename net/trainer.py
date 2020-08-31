@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
@@ -65,7 +67,8 @@ def train_model(train_dataset, val_dataset, x_test, y_test, param, prev_model=No
                 num_iterations=2000, learning_rate=0.9,
                 weight=1,
                 print_cost=False):
-    print("start training")
+    start_time = datetime.now()
+    print("start training", start_time.strftime("%Y-%m-%d-%H-%M-%S"))
     loader = DataLoader(train_dataset, batch_size=batch_size, num_workers=0, shuffle=False)
     val_loader = None
     if val_dataset is not None:
@@ -148,6 +151,11 @@ def train_model(train_dataset, val_dataset, x_test, y_test, param, prev_model=No
     save(model, param, epoch + epoch_prev + 1, optimizer, loss,
          val_accuracy, val_precision, val_recall,
          test_accuracy, test_precision, test_recall)
+
+    end_time = datetime.now()
+    time_delta = end_time-start_time
+    print("training finished in", round(time_delta.seconds/60/60, 3), "hours, ended at",
+          end_time.strftime("%Y-%m-%d-%H-%M-%S"))
 
     return model
 
