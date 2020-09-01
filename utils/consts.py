@@ -1,3 +1,5 @@
+import torch
+device = torch.device('cuda:0')
 index_list_analysis = ["sh.000001",  # 上证指数
                        "sz.399106",  # 深证综指
                        "sh.000016",  # 上证50
@@ -8,3 +10,4 @@ index_list_analysis = ["sh.000001",  # 上证指数
                        "sh.000011",  # 基金指数
                        "sh.000012",  # 国债指数
                        ]
+

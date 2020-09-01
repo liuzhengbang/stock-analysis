@@ -7,14 +7,14 @@ from net.model import load
 from net.trainer import validate, predict
 from utils.consts import index_list_analysis
 from utils.csv_utils import get_stock_code_list_by_industry
-from utils.stock_utils import get_industry_code_list_in_code_set, get_code_name
+from utils.stock_utils import get_stock_code_list_of_industry_contained_in_selected_set, get_code_name
 
 predict_days = [6]
 thresholds = [0.01]
 predict_type = "average"
 
 
-def _validate_model_with_stock_list(model_name, stock_list, index_list_analysis_in,
+def _validate_model_with_stock_list(model_name, stock_list, index_list_analysis_in, validate_with_not_training_data,
                                     predict_days_in, thresholds_in, predict_type_in):
     model, _, _, _, _ = load(model_name)
     for stock in stock_list:
@@ -22,23 +22,28 @@ def _validate_model_with_stock_list(model_name, stock_list, index_list_analysis_
             x_test, y_test = construct_dataset(stock, index_list_analysis_in,
                                                predict_days=predict_days_in, thresholds=thresholds_in,
                                                predict_type=predict_type_in,
-                                               return_data=True)
+                                               return_data=True,
+                                               return_only_val_data=validate_with_not_training_data)
         except DataException:
             continue
 
         with torch.no_grad():
             code_name = get_code_name(stock)
             accuracy, precision, recall = validate(model, x_test, y_test)
-        print("stock {} {}: total sample {}, positive sample {}, accuracy {}%, precision {}%, recall {}%"
-              .format(stock, code_name, len(x_test), sum(y_test).item(), accuracy, precision, recall))
+            if sum(y_test) != 0:
+                positive_sample = round(sum(y_test).item())
+            else:
+                positive_sample = 0
+            print("stock {} {}: total sample {}, positive sample {}, accuracy {}%, precision {}%, recall {}%"
+                  .format(stock, code_name, len(x_test), positive_sample, accuracy, precision, recall))
 
 
 def validate_model():
-    all_stock_list = get_industry_code_list_in_code_set(["通信", "电子"], "hs300")
-    # all_stock_list = get_stock_code_list_by_industry(["通信", "电子"])
+    validate_with_not_training_data = False
+    all_stock_list = get_stock_code_list_of_industry_contained_in_selected_set(["通信", "电子"], ["hs300"])
     print(all_stock_list)
-    _validate_model_with_stock_list("2020-09-01-00-07-08-84.09-18.84-1.32-model",
-                                    all_stock_list, index_list_analysis,
+    _validate_model_with_stock_list("2020-09-01-03-40-18-86.92-43.86-2.49-model_ele_6_max_0.15",
+                                    all_stock_list, index_list_analysis, validate_with_not_training_data,
                                     predict_days_in=predict_days,
                                     thresholds_in=thresholds,
                                     predict_type_in=predict_type)
@@ -57,5 +62,5 @@ def save_predict_result(code, model):
     y.to_csv("temp/" + code + "_result.csv", header=False, index=True)
 
 
-# save_predict_result("sz.002475", "2020-08-29-20-29-49-96.32-33.13-0.72-model_ele_pos_6_max_0.2")
+# save_predict_result("sh.601360", "2020-09-01-19-09-55-60.48-30.11-17.01-model")
 validate_model()

@@ -1,10 +1,8 @@
 from datetime import datetime, timedelta
-
 import torch
 import pandas as pd
-
 from utils.csv_utils import read_individual_csv, read_index_csv, delete_temp_data, save_temp_data, NEGATIVE_CSV, \
-    POSITIVE_CSV, VAL_POSITIVE_CSV, VAL_NEGATIVE_CSV
+    POSITIVE_CSV, VAL_POSITIVE_CSV, VAL_NEGATIVE_CSV, load_temp_data
 from utils.stock_utils import get_code_name
 
 individual_cols_sel = ['open', 'close', 'amount', 'high', 'low', 'volume',
@@ -15,8 +13,6 @@ index_cols_sel = ['open', 'high', 'low', 'close', 'volume', 'amount']
 index_cols_norm = [1000., 1000., 1000., 1000., 100000000., 100000000.]
 
 device = torch.device('cuda:0')
-# default_rolling_days = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 17, 20, 25, 30, 45, 60, 80, 100, 200, 300,
-# 450, 600, 750, 1000]
 default_rolling_days = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 17, 20, 25, 30, 45, 60, 75,
                         100, 150, 225, 300, 400, 500, 600, 700, 800, 900, 1000]
 
@@ -29,20 +25,22 @@ class DataException(Exception):
         return repr(self.value)
 
 
-def construct_dataset(code, index_code_list, predict_days, thresholds, predict_type, val_days=90,
+def construct_dataset(code, index_code_list, predict_days, thresholds, predict_type,
+                      val_days=90,
                       append_history=True,
                       append_index=False,
                       rolling_days=None,
                       save_data_to_csv=False,
-                      return_data=False):
+                      return_data=False,
+                      return_only_val_data=False):
     """
-    :param val_days:
-    :param save_data_to_csv:
-    :param predict_type:
-    :param append_history:
-    :param rolling_days:
-    :param thresholds:
-    :param return_data:
+    :param return_only_val_data: only return val data for validation
+    :param val_days: validation period, from today
+    :param save_data_to_csv: whether save data to temp csv for manual investigate
+    :param predict_type: max or average
+    :param append_history: whether append history data
+    :param rolling_days: history days to roll
+    :param return_data: whether just return data, without saving to csv
     :param code: stock code
     :param index_code_list: index code to append
     :param predict_days: predicts n days after the given day, 1 predicts only next day
@@ -109,14 +107,14 @@ def construct_dataset(code, index_code_list, predict_days, thresholds, predict_t
     if not return_data:
         _save_temp_data_to_csv_file(csv_data, title_list, val_days)
     else:
-        if val_days != 0:
-            # csv_data['date'] = pd.to_datetime(csv_data['date'], format='%Y-%m-%d')
-            # split_date = datetime.today() + timedelta(days=-val_days)
-            # csv_data = (csv_data[(csv_data.date >= split_date)])
-            dataset_x = pd.DataFrame(csv_data, columns=title_list)
-            dataset_y = pd.DataFrame(csv_data, columns=['result'])
+        if return_only_val_data:
+            csv_data['date'] = pd.to_datetime(csv_data['date'], format='%Y-%m-%d')
+            split_date = datetime.today() + timedelta(days=-val_days)
+            csv_data = (csv_data[(csv_data.date >= split_date)])
+        dataset_x = pd.DataFrame(csv_data, columns=title_list)
+        dataset_y = pd.DataFrame(csv_data, columns=['result'])
 
-            return convert_to_tensor(dataset_x), convert_to_tensor(dataset_y)
+        return convert_to_tensor(dataset_x), convert_to_tensor(dataset_y)
 
 
 def construct_predict_data(code, index_code_list,
@@ -137,6 +135,10 @@ def construct_predict_data(code, index_code_list,
         raise DataException(code)
     except pd.errors.EmptyDataError:
         raise DataException(code)
+
+    csv_data = csv_data[csv_data.tradestatus == 1]
+    csv_data = csv_data[csv_data.isST == 0]
+    csv_data = csv_data.reset_index(drop=True)
 
     if len(csv_data) < max(rolling_days):
         raise DataException(code)
@@ -251,19 +253,6 @@ def _add_max_predicts(csv_data, predict_days, thresholds):
     csv_data.drop(labels=range(end_index - drop_days, end_index), inplace=True)
 
 
-# def _getDataSet(csv_data, title_list, predict_days, threshold=0.0):
-#     csv_data['predict'] = (csv_data['close'].rolling(predict_days).mean().shift(-predict_days) - csv_data['close']) \
-#                           / csv_data['close']
-#     csv_data['predict_sort'] = csv_data.apply(lambda x: 1.0 if x.predict > threshold else 0.0, axis=1)
-#
-#     end_index = len(csv_data)
-#     csv_data.drop(labels=range(end_index - predict_days, end_index), inplace=True)
-#     dataset_x = pd.DataFrame(csv_data, columns=title_list)
-#     dataset_y = pd.DataFrame(csv_data, columns=['predict_sort'])
-#
-#     return dataset_x, dataset_y
-
-
 def _normalize_individual(frame):
     for index in range(len(individual_cols_sel)):
         frame[individual_cols_sel[index]] = frame[individual_cols_sel[index]] / individual_cols_norm[index]
@@ -272,24 +261,6 @@ def _normalize_individual(frame):
 def _normalize_index(frame):
     for index in range(len(index_cols_sel)):
         frame[index_cols_sel[index]] = frame[index_cols_sel[index]] / index_cols_norm[index]
-
-
-# def construct_dataset_batch(stock_list, index_code_list):
-#     x_train, y_train = construct_dataset(stock_list[0], index_code_list)
-#     for code in stock_list[1:]:
-#         x_temp, y_temp = construct_dataset(code, index_code_list)
-#         x_train = torch.cat([x_train, x_temp], dim=0)
-#         y_train = torch.cat([y_train, y_temp], dim=0)
-#
-#     return x_train, y_train
-
-
-def _convert_pct_chg_to_bool(pct_chg):
-    for value in range(pct_chg.shape[0]):
-        if pct_chg[value] > 0:
-            pct_chg[value] = 1.
-        else:
-            pct_chg[value] = 0.
 
 
 def _save_temp_data_to_csv_file(csv_data, title_list, val_days):
@@ -316,3 +287,18 @@ def construct_temp_csv_data(stock_list, index_code_list, predict_days, threshold
             print(code, get_code_name(code), "processed")
         except DataException:
             print(code, get_code_name(code), "not processed")
+
+
+def load_dataset():
+    train_pos_data = load_temp_data(POSITIVE_CSV)
+    train_neg_data = load_temp_data(NEGATIVE_CSV)
+
+    val_pos_data = load_temp_data(VAL_POSITIVE_CSV)
+    val_neg_data = load_temp_data(VAL_NEGATIVE_CSV)
+
+    total_pos = len(train_pos_data) + len(val_pos_data)
+    total_neg = len(train_neg_data) + len(val_neg_data)
+    total_sample = total_pos + total_neg
+    pos_frac = round(total_pos / total_sample * 100, 2)
+    print("pos samples:", total_pos, ", which is", pos_frac, "% of total", total_sample, "samples")
+    return train_pos_data, train_neg_data, val_pos_data, val_neg_data
