@@ -11,10 +11,10 @@ from utils.stock_utils import get_code_name, get_stock_code_list_of_industry_con
 
 device = torch.device('cuda:0')
 
-industry_list = ["通信", "电子"]
+industry_list = ["电子", "计算机", "汽车", "轻工制造", "通信", "医药生物", "电气设备", "机械设备"]
 select_list = ["hs300"]
 predict_stock_list = get_stock_code_list_of_industry_contained_in_selected_set(industry_list, select_list)
-model, _, _, _, param = load("2020-09-01-03-40-18-86.92-43.86-2.49-model_ele_6_max_0.15")
+model, _, _, _, param = load("2020-09-02-22-33-07-94.76-15.60-0.25-model")
 
 
 def predict_stocks(model_loaded, stock_list):

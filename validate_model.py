@@ -10,8 +10,8 @@ from utils.csv_utils import get_stock_code_list_by_industry
 from utils.stock_utils import get_stock_code_list_of_industry_contained_in_selected_set, get_code_name
 
 predict_days = [6]
-thresholds = [0.01]
-predict_type = "average"
+thresholds = [0.05]
+predict_type = "max"
 
 
 def _validate_model_with_stock_list(model_name, stock_list, index_list_analysis_in, validate_with_not_training_data,
@@ -39,10 +39,11 @@ def _validate_model_with_stock_list(model_name, stock_list, index_list_analysis_
 
 
 def validate_model():
-    validate_with_not_training_data = False
-    all_stock_list = get_stock_code_list_of_industry_contained_in_selected_set(["通信", "电子"], ["hs300"])
+    validate_with_not_training_data = True
+    all_stock_list = get_stock_code_list_of_industry_contained_in_selected_set(
+        ["电子", "计算机", "汽车", "轻工制造", "通信", "医药生物", "电气设备", "机械设备", "化工", "家用电器"], ["hs300"])
     print(all_stock_list)
-    _validate_model_with_stock_list("2020-09-01-03-40-18-86.92-43.86-2.49-model_ele_6_max_0.15",
+    _validate_model_with_stock_list("2020-09-02-22-33-07-94.76-15.60-0.25-model",
                                     all_stock_list, index_list_analysis, validate_with_not_training_data,
                                     predict_days_in=predict_days,
                                     thresholds_in=thresholds,

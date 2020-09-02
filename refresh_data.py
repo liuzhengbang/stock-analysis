@@ -20,7 +20,8 @@ index_list_query = ["sh.000001",
                     "sh.000063",
                     "sh.000011",
                     "sh.000012",
-                    "sh.000159"  # 沪股通
+                    "sh.000159",  # 沪股通
+                    "sz.399006"   # 创业板指
                     ]
 
 all_stock_list = get_all_stocks_code_list()

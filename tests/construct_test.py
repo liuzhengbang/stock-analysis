@@ -11,6 +11,7 @@ class TestConstructDataset(unittest.TestCase):
 
     def test_construct_basic(self):
         construct_dataset("test", ["index_test"], predict_type="average", predict_days=[1], rolling_days=[2, 4],
+                          append_index=True,
                           val_days=0,
                           thresholds=[0.1])
         pos_data = load_temp_data(POSITIVE_CSV)
@@ -27,7 +28,9 @@ class TestConstructDataset(unittest.TestCase):
                                  ['open', 'close', 'amount', 'high', 'low', 'volume', 'peTTM', 'pbMRQ',
                                   'open_index_test', 'high_index_test', 'low_index_test',
                                   'close_index_test', 'volume_index_test', 'amount_index_test',
-                                  'pctChg_2', 'volume_2', 'pctChg_4', 'volume_4'])
+                                  'pctChg_2', 'volume_2', 'ma_2', 'highest_2', 'lowest_2', 'peTTM_2',
+                                  'pbMRQ_2', 'pctChg_4', 'volume_4', 'ma_4', 'highest_4', 'lowest_4', 'peTTM_4',
+                                  'pbMRQ_4'])
 
         self.assertSequenceEqual(neg_data['open'].tolist(), [1.4])
         self.assertSequenceEqual(neg_data['low'].tolist(), [1.3])
@@ -49,6 +52,7 @@ class TestConstructDataset(unittest.TestCase):
 
     def test_construct_predict_average_pos(self):
         construct_dataset("test_1", ["index_test"], predict_type="average", predict_days=[1, 3], rolling_days=[2],
+                          append_index=True,
                           val_days=0,
                           thresholds=[0.07, 0.01])
         pos_data = load_temp_data(POSITIVE_CSV)
@@ -71,10 +75,12 @@ class TestConstructDataset(unittest.TestCase):
                                  ['open', 'close', 'amount', 'high', 'low', 'volume', 'peTTM', 'pbMRQ',
                                   'open_index_test', 'high_index_test', 'low_index_test',
                                   'close_index_test', 'volume_index_test', 'amount_index_test',
-                                  'pctChg_2', 'volume_2'])
+                                  'pctChg_2', 'volume_2', 'ma_2', 'highest_2', 'lowest_2', 'peTTM_2',
+                                  'pbMRQ_2'])
 
     def test_construct_predict_average_neg(self):
         construct_dataset("test_1", ["index_test"], predict_type="average", predict_days=[1, 3], rolling_days=[2],
+                          append_index=True,
                           val_days=0,
                           thresholds=[-0.08, -0.01])
         pos_data = load_temp_data(POSITIVE_CSV)
@@ -92,15 +98,15 @@ class TestConstructDataset(unittest.TestCase):
 
         self.assertEqual(len(neg_data), 4)
         self.assertEqual(len(pos_data), 1)
-
         self.assertSequenceEqual(neg_data.columns.tolist(),
                                  ['open', 'close', 'amount', 'high', 'low', 'volume', 'peTTM', 'pbMRQ',
                                   'open_index_test', 'high_index_test', 'low_index_test',
                                   'close_index_test', 'volume_index_test', 'amount_index_test',
-                                  'pctChg_2', 'volume_2'])
+                                  'pctChg_2', 'volume_2', 'ma_2', 'highest_2', 'lowest_2', 'peTTM_2', 'pbMRQ_2'])
 
     def test_construct_predict_average_equal(self):
         construct_dataset("test_1", ["index_test"], predict_type="average",
+                          append_index=True,
                           predict_days=[1, 3], rolling_days=[2],
                           val_days=0, thresholds=[0, 0])
         pos_data = load_temp_data(POSITIVE_CSV)
@@ -123,10 +129,11 @@ class TestConstructDataset(unittest.TestCase):
                                  ['open', 'close', 'amount', 'high', 'low', 'volume', 'peTTM', 'pbMRQ',
                                   'open_index_test', 'high_index_test', 'low_index_test',
                                   'close_index_test', 'volume_index_test', 'amount_index_test',
-                                  'pctChg_2', 'volume_2'])
+                                  'pctChg_2', 'volume_2', 'ma_2', 'highest_2', 'lowest_2', 'peTTM_2', 'pbMRQ_2'])
 
     def test_construct_predict_max_pos(self):
         construct_dataset("test_2", ["index_test"], predict_type="max",
+                          append_index=True,
                           predict_days=[1, 3], rolling_days=[2], val_days=0, thresholds=[0.07, 0.01])
         pos_data = load_temp_data(POSITIVE_CSV)
         neg_data = load_temp_data(NEGATIVE_CSV)
@@ -148,10 +155,11 @@ class TestConstructDataset(unittest.TestCase):
                                  ['open', 'close', 'amount', 'high', 'low', 'volume', 'peTTM', 'pbMRQ',
                                   'open_index_test', 'high_index_test', 'low_index_test',
                                   'close_index_test', 'volume_index_test', 'amount_index_test',
-                                  'pctChg_2', 'volume_2'])
+                                  'pctChg_2', 'volume_2', 'ma_2', 'highest_2', 'lowest_2', 'peTTM_2', 'pbMRQ_2'])
 
     def test_construct_predict_max_neg(self):
         construct_dataset("test_2", ["index_test"], predict_type="max",
+                          append_index=True,
                           predict_days=[1, 3], rolling_days=[2], val_days=0,
                           thresholds=[-0.04, -0.02])
         pos_data = load_temp_data(POSITIVE_CSV)
@@ -174,10 +182,11 @@ class TestConstructDataset(unittest.TestCase):
                                  ['open', 'close', 'amount', 'high', 'low', 'volume', 'peTTM', 'pbMRQ',
                                   'open_index_test', 'high_index_test', 'low_index_test',
                                   'close_index_test', 'volume_index_test', 'amount_index_test',
-                                  'pctChg_2', 'volume_2'])
+                                  'pctChg_2', 'volume_2', 'ma_2', 'highest_2', 'lowest_2', 'peTTM_2', 'pbMRQ_2'])
 
     def test_construct_predict_max_equal(self):
         construct_dataset("test_2", ["index_test"], predict_type="max",
+                          append_index=True,
                           predict_days=[1, 3], rolling_days=[2], val_days=0,
                           thresholds=[0, 0])
         pos_data = load_temp_data(POSITIVE_CSV)
@@ -200,4 +209,4 @@ class TestConstructDataset(unittest.TestCase):
                                  ['open', 'close', 'amount', 'high', 'low', 'volume', 'peTTM', 'pbMRQ',
                                   'open_index_test', 'high_index_test', 'low_index_test',
                                   'close_index_test', 'volume_index_test', 'amount_index_test',
-                                  'pctChg_2', 'volume_2'])
+                                  'pctChg_2', 'volume_2', 'ma_2', 'highest_2', 'lowest_2', 'peTTM_2', 'pbMRQ_2'])

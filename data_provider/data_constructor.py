@@ -9,8 +9,10 @@ individual_cols_sel = ['open', 'close', 'amount', 'high', 'low', 'volume',
                        'peTTM', 'pbMRQ']
 individual_cols_norm = [10., 10., 100000000., 10., 10., 10000000.,
                         1., 1.]
-index_cols_sel = ['open', 'high', 'low', 'close', 'volume', 'amount']
-index_cols_norm = [1000., 1000., 1000., 1000., 100000000., 100000000.]
+# index_cols_sel = ['open', 'high', 'low', 'close', 'volume', 'amount']
+# index_cols_norm = [1000., 1000., 1000., 1000., 100000000., 100000000.]
+index_cols_sel = ['open', 'close', 'volume', 'amount']
+index_cols_norm = [1000., 1000., 100000000., 100000000.]
 
 device = torch.device('cuda:0')
 default_rolling_days = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 17, 20, 25, 30, 45, 60, 75,
@@ -26,9 +28,9 @@ class DataException(Exception):
 
 
 def construct_dataset(code, index_code_list, predict_days, thresholds, predict_type,
-                      val_days=90,
+                      val_days=150,
                       append_history=True,
-                      append_index=False,
+                      append_index=True,
                       rolling_days=None,
                       save_data_to_csv=False,
                       return_data=False,

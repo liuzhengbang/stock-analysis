@@ -20,9 +20,8 @@ class TrainingDataset(Dataset):
         self.neg_length = len(self.neg_data)
         self.length = max(self.pos_length, self.neg_length) * 2
         print("training dataset length:", self.pos_length + self.neg_length,
-              "with pos", self.pos_length, "samples, neg", self.neg_length, "samples,"
-                                                                            "pos ratio",
-              round(self.pos_length / (self.pos_length + self.neg_length) * 100, 2), "%")
+              "with pos", self.pos_length, "samples, neg", self.neg_length, "samples,",
+              "pos ratio", round(self.pos_length / (self.pos_length + self.neg_length) * 100, 2), "%")
 
     def __getitem__(self, ndx):
         index = ndx // 2
@@ -45,9 +44,8 @@ class ValidationDataset(Dataset):
         self.neg_length = len(self.neg_data)
         self.length = len(self.pos_data) + len(self.neg_data)
         print("validation dataset length:", self.length,
-              "with pos", self.pos_length, "samples, neg", self.neg_length, "samples,"
-                                                                            "pos ratio",
-              round(len(self.pos_data) / self.length * 100, 2), "%")
+              "with pos", self.pos_length, "samples, neg", self.neg_length, "samples,",
+              "pos ratio", round(len(self.pos_data) / self.length * 100, 2), "%")
 
     def __getitem__(self, ndx):
         if ndx < self.pos_length:
@@ -79,7 +77,7 @@ def train_model(train_dataset, val_dataset, x_test, y_test, param, prev_model=No
         param.set_net_param(param_prev.get_net_param())
     else:
         input_size = x_test.shape[1]
-        net_param = [2000, 100]
+        net_param = [3000, 300]
         model = Net(input_size, net_param).to(device=device)
         optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
         epoch_prev = 0
@@ -129,7 +127,7 @@ def train_model(train_dataset, val_dataset, x_test, y_test, param, prev_model=No
                       .format(epoch, loss.data, grad_sum.data,
                               test_accuracy, test_precision, test_recall,
                               val_accuracy, val_precision, val_recall))
-                if val_precision > max_precision:
+                if val_precision > max_precision or epoch % 1000 == 0:
                     save(model, param, epoch + epoch_prev + 1, optimizer, batch_size, loss,
                          val_accuracy, val_precision, val_recall,
                          test_accuracy, test_precision, test_recall)
@@ -139,7 +137,7 @@ def train_model(train_dataset, val_dataset, x_test, y_test, param, prev_model=No
                       " test accuracy {}%, precision {}%, recall {}%"
                       .format(epoch, loss.data, grad_sum.data,
                               test_accuracy, test_precision, test_recall))
-                if test_precision > max_precision or epoch % 2000 == 0:
+                if test_precision > max_precision or epoch % 1000 == 0:
                     save(model, param, epoch + epoch_prev + 1, optimizer, batch_size, loss,
                          "NA", "NA", "NA",
                          test_accuracy, test_precision, test_recall)
@@ -198,30 +196,22 @@ def predict_with_prob(module, source):
 def validate(module, source, y_test):
     y_prediction = predict(module, source)
     total_sample = source.shape[0]
-    accuracy = 100.0 - torch.mean(torch.abs(torch.sub(y_prediction, y_test))) * 100.0
-    total_positive_prediction = 0
-    total_negative_prediction = 0
-    true_positive = 0
-    false_negative = 0
-    pos_predict = torch.sum(y_prediction)
-    for i in range(total_sample):
-        if y_prediction[i, 0] == 0.0:
-            total_negative_prediction = total_negative_prediction + 1
-            if y_test[i, 0] == 0.0:
-                false_negative = false_negative + 1
-        elif y_prediction[i, 0] == 1.0:
-            total_positive_prediction = total_positive_prediction + 1
-            if y_test[i, 0] == 1.0:
-                true_positive = true_positive + 1
-    assert total_sample == (total_positive_prediction + total_negative_prediction)
+    tp = ((y_prediction == 1.0) & (y_test == 1.0)).sum().item()
+    tn = ((y_prediction == 0.0) & (y_test == 0.0)).sum().item()
+    fp = ((y_prediction == 1.0) & (y_test == 0.0)).sum().item()
+    fn = ((y_prediction == 0.0) & (y_test == 1.0)).sum().item()
+    print(tp, fp)
+    assert (tp + tn + fp + fn) == total_sample
 
-    precision = 100.0 * true_positive / pos_predict
-    if (true_positive + false_negative) == 0:
-        recall = 0.00
+    if (tp + fp) == 0:
+        precision = 0
     else:
-        recall = 100.0 * true_positive / (true_positive + false_negative)
-    accuracy = round(accuracy.item(), 2)
-    precision = round(precision.item(), 2)
-    recall = round(recall, 2)
+        precision = tp / (tp + fp) * 100
 
-    return accuracy, precision, recall
+    if (tp + fn) == 0:
+        recall = 0
+    else:
+        recall = tp / (tp + fn) * 100
+    accuracy = (tp + tn) / (tp + tn + fp + fn) * 100
+
+    return round(accuracy, 3), round(precision, 3), round(recall, 3)
