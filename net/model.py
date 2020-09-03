@@ -11,9 +11,9 @@ MODEL_SUFFIX = ".pt"
 
 
 class TrainingParam(object):
-    def __init__(self, dataset_type, selected_set, training_stock_list, test_stock_list, index_list,
+    def __init__(self, industry_list, selected_set, training_stock_list, test_stock_list, index_list,
                  predict_days, thresholds, predict_type):
-        self.dataset_type = dataset_type
+        self.industry_list = industry_list
         self.training_stock_list = training_stock_list
         self.test_stock_list = test_stock_list
         self.index_list = index_list
@@ -42,10 +42,16 @@ class TrainingParam(object):
         return self.net_param
 
     def get_type(self):
-        return self.dataset_type
+        return self.industry_list
 
     def get_training_stock_list(self):
         return self.training_stock_list
+
+    def get_industry_list(self):
+        return self.industry_list
+
+    def get_select_set(self):
+        return self.selected_set
 
 
 def save(model, param, epoch, optimizer, batch_size, loss,
@@ -88,7 +94,7 @@ def load(path):
     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
     epoch = checkpoint['epoch']
     loss = checkpoint['loss']
-    print("load model from", path, "type", param.dataset_type, "total iterations", checkpoint['epoch'])
+    print("load model from", path, "type", param.industry_list, "total iterations", checkpoint['epoch'])
     print("model predict days", param.predict_days, "threshold", param.thresholds, "predict type", param.predict_type)
     try:
         val_accuracy = checkpoint['val_accuracy']
@@ -110,13 +116,13 @@ def get_prediction_from_param(param):
     for i in range(len(predict_days)):
         threshold = str(thresholds[i] * 100) + "%"
         day = str(predict_days[i])
-        if thresholds[i] >= 0 and predict_type == "max":
+        if thresholds[i] >= 0 and predict_type[i] == "max":
             ret = ret + "raise to highest [" + threshold + "] in [" + day + "] days"
-        elif thresholds[i] < 0 and predict_type == "max":
+        elif thresholds[i] < 0 and predict_type[i] == "max":
             ret = ret + "drop to lowest [" + threshold + "] in [" + day + "] days"
-        elif thresholds[i] >= 0 and predict_type == "average":
+        elif thresholds[i] >= 0 and predict_type[i] == "average":
             ret = ret + "avg price will be [" + threshold + "] higher in [" + day + "] days"
-        elif thresholds[i] < 0 and predict_type == "average":
+        elif thresholds[i] < 0 and predict_type[i] == "average":
             ret = ret + "avg price will be [" + threshold + "] lower in [" + day + "] days"
 
         if i != len(predict_days) - 1:

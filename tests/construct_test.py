@@ -10,7 +10,7 @@ class TestConstructDataset(unittest.TestCase):
         delete_temp_data()
 
     def test_construct_basic(self):
-        construct_dataset("test", ["index_test"], predict_type="average", predict_days=[1], rolling_days=[2, 4],
+        construct_dataset("test", ["index_test"], predict_type=["average"], predict_days=[1], rolling_days=[2, 4],
                           append_index=True,
                           val_days=0,
                           thresholds=[0.1])
@@ -51,7 +51,7 @@ class TestConstructDataset(unittest.TestCase):
         self.assertAlmostEqual(pos_data['open_index_test'].tolist()[0], 3.3415276)
 
     def test_construct_predict_average_pos(self):
-        construct_dataset("test_1", ["index_test"], predict_type="average", predict_days=[1, 3], rolling_days=[2],
+        construct_dataset("test_1", ["index_test"], predict_type=["average", "average"], predict_days=[1, 3], rolling_days=[2],
                           append_index=True,
                           val_days=0,
                           thresholds=[0.07, 0.01])
@@ -79,7 +79,7 @@ class TestConstructDataset(unittest.TestCase):
                                   'pbMRQ_2'])
 
     def test_construct_predict_average_neg(self):
-        construct_dataset("test_1", ["index_test"], predict_type="average", predict_days=[1, 3], rolling_days=[2],
+        construct_dataset("test_1", ["index_test"], predict_type=["average","average"], predict_days=[1, 3], rolling_days=[2],
                           append_index=True,
                           val_days=0,
                           thresholds=[-0.08, -0.01])
@@ -105,7 +105,7 @@ class TestConstructDataset(unittest.TestCase):
                                   'pctChg_2', 'volume_2', 'ma_2', 'highest_2', 'lowest_2', 'peTTM_2', 'pbMRQ_2'])
 
     def test_construct_predict_average_equal(self):
-        construct_dataset("test_1", ["index_test"], predict_type="average",
+        construct_dataset("test_1", ["index_test"], predict_type=["average", "average"],
                           append_index=True,
                           predict_days=[1, 3], rolling_days=[2],
                           val_days=0, thresholds=[0, 0])
@@ -132,7 +132,7 @@ class TestConstructDataset(unittest.TestCase):
                                   'pctChg_2', 'volume_2', 'ma_2', 'highest_2', 'lowest_2', 'peTTM_2', 'pbMRQ_2'])
 
     def test_construct_predict_max_pos(self):
-        construct_dataset("test_2", ["index_test"], predict_type="max",
+        construct_dataset("test_2", ["index_test"], predict_type=["max", "max"],
                           append_index=True,
                           predict_days=[1, 3], rolling_days=[2], val_days=0, thresholds=[0.07, 0.01])
         pos_data = load_temp_data(POSITIVE_CSV)
@@ -158,7 +158,7 @@ class TestConstructDataset(unittest.TestCase):
                                   'pctChg_2', 'volume_2', 'ma_2', 'highest_2', 'lowest_2', 'peTTM_2', 'pbMRQ_2'])
 
     def test_construct_predict_max_neg(self):
-        construct_dataset("test_2", ["index_test"], predict_type="max",
+        construct_dataset("test_2", ["index_test"], predict_type=["max", "max"],
                           append_index=True,
                           predict_days=[1, 3], rolling_days=[2], val_days=0,
                           thresholds=[-0.04, -0.02])
@@ -185,7 +185,7 @@ class TestConstructDataset(unittest.TestCase):
                                   'pctChg_2', 'volume_2', 'ma_2', 'highest_2', 'lowest_2', 'peTTM_2', 'pbMRQ_2'])
 
     def test_construct_predict_max_equal(self):
-        construct_dataset("test_2", ["index_test"], predict_type="max",
+        construct_dataset("test_2", ["index_test"], predict_type=["max", "max"],
                           append_index=True,
                           predict_days=[1, 3], rolling_days=[2], val_days=0,
                           thresholds=[0, 0])
@@ -204,6 +204,34 @@ class TestConstructDataset(unittest.TestCase):
 
         self.assertEqual(len(neg_data), 1)
         self.assertEqual(len(pos_data), 4)
+
+        self.assertSequenceEqual(neg_data.columns.tolist(),
+                                 ['open', 'close', 'amount', 'high', 'low', 'volume', 'peTTM', 'pbMRQ',
+                                  'open_index_test', 'high_index_test', 'low_index_test',
+                                  'close_index_test', 'volume_index_test', 'amount_index_test',
+                                  'pctChg_2', 'volume_2', 'ma_2', 'highest_2', 'lowest_2', 'peTTM_2', 'pbMRQ_2'])
+
+    def test_construct_predict_mix_equal(self):
+        construct_dataset("test_2", ["index_test"], predict_type=["max", "average"],
+                          append_index=True,
+                          predict_days=[1, 3], rolling_days=[2], val_days=0,
+                          thresholds=[0.07, 0.09])
+
+        pos_data = load_temp_data(POSITIVE_CSV)
+        neg_data = load_temp_data(NEGATIVE_CSV)
+
+        #          date  result  close    low  avg_chg_3  max_chg_1  result
+        # 0  2020-08-05     0.0  0.100  0.090   0.076667   0.130000     0.0
+        # 1  2020-08-06     0.0  0.110  0.100  -0.021212   0.009091     0.0
+        # 2  2020-08-07     0.0  0.111  0.110  -0.018018  -0.072072     0.0
+        # 3  2020-08-10     1.0  0.102  0.101   0.094771   0.078431     1.0
+        # 4  2020-08-11     0.0  0.110  0.110   0.012121   0.018182     0.0
+        # 5  2020-08-12     0.0  0.115  0.105        NaN  -0.034783     0.0
+        # 6  2020-08-13     0.0  0.110  0.103        NaN   0.000000     0.0
+        # 7  2020-08-14     0.0  0.109  0.107        NaN        NaN     0.0
+
+        self.assertEqual(len(neg_data), 4)
+        self.assertEqual(len(pos_data), 1)
 
         self.assertSequenceEqual(neg_data.columns.tolist(),
                                  ['open', 'close', 'amount', 'high', 'low', 'volume', 'peTTM', 'pbMRQ',

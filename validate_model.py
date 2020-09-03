@@ -9,18 +9,20 @@ from utils.consts import index_list_analysis
 from utils.csv_utils import get_stock_code_list_by_industry
 from utils.stock_utils import get_stock_code_list_of_industry_contained_in_selected_set, get_code_name
 
-predict_days = [6]
-thresholds = [0.05]
-predict_type = "max"
+predict_days = [15]
+thresholds = [0.1]
+predict_type = ["max"]
 
 
 def _validate_model_with_stock_list(model_name, stock_list, index_list_analysis_in, validate_with_not_training_data,
+                                    val_days,
                                     predict_days_in, thresholds_in, predict_type_in):
     model, _, _, _, _ = load(model_name)
     for stock in stock_list:
         try:
             x_test, y_test = construct_dataset(stock, index_list_analysis_in,
                                                predict_days=predict_days_in, thresholds=thresholds_in,
+                                               val_days=val_days,
                                                predict_type=predict_type_in,
                                                return_data=True,
                                                return_only_val_data=validate_with_not_training_data)
@@ -41,10 +43,10 @@ def _validate_model_with_stock_list(model_name, stock_list, index_list_analysis_
 def validate_model():
     validate_with_not_training_data = True
     all_stock_list = get_stock_code_list_of_industry_contained_in_selected_set(
-        ["电子", "计算机", "汽车", "轻工制造", "通信", "医药生物", "电气设备", "机械设备", "化工", "家用电器"], ["hs300"])
+        ["银行"], [])
     print(all_stock_list)
-    _validate_model_with_stock_list("2020-09-02-22-33-07-94.76-15.60-0.25-model",
-                                    all_stock_list, index_list_analysis, validate_with_not_training_data,
+    _validate_model_with_stock_list("2020-09-04-00-20-22-99.63-93.83-94.41-model",
+                                    all_stock_list, index_list_analysis, validate_with_not_training_data, val_days=45,
                                     predict_days_in=predict_days,
                                     thresholds_in=thresholds,
                                     predict_type_in=predict_type)

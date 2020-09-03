@@ -88,7 +88,7 @@ def train_model(train_dataset, val_dataset, x_test, y_test, param, prev_model=No
     pos_weight = torch.tensor([weight]).to(device)
     criterion = nn.BCEWithLogitsLoss(weight=pos_weight)
     epoch = 0
-    max_precision = 30
+    max_precision = 20
 
     # Training the Model
     for epoch in range(num_iterations):
@@ -131,7 +131,8 @@ def train_model(train_dataset, val_dataset, x_test, y_test, param, prev_model=No
                     save(model, param, epoch + epoch_prev + 1, optimizer, batch_size, loss,
                          val_accuracy, val_precision, val_recall,
                          test_accuracy, test_precision, test_recall)
-                    max_precision = val_precision
+                    if val_precision > max_precision:
+                        max_precision = val_precision
             else:
                 print("Loss after iteration {} with loss: {:.6f}, grad sum: {:.6f},"
                       " test accuracy {}%, precision {}%, recall {}%"
@@ -141,7 +142,8 @@ def train_model(train_dataset, val_dataset, x_test, y_test, param, prev_model=No
                     save(model, param, epoch + epoch_prev + 1, optimizer, batch_size, loss,
                          "NA", "NA", "NA",
                          test_accuracy, test_precision, test_recall)
-                    max_precision = val_precision
+                    if val_precision > max_precision:
+                        max_precision = val_precision
 
     test_accuracy, test_precision, test_recall = validate(model, x_test, y_test)
     print("Test Dataset Accuracy:", test_accuracy, "Precision:", test_precision, "Recall:", test_recall)
@@ -200,7 +202,7 @@ def validate(module, source, y_test):
     tn = ((y_prediction == 0.0) & (y_test == 0.0)).sum().item()
     fp = ((y_prediction == 1.0) & (y_test == 0.0)).sum().item()
     fn = ((y_prediction == 0.0) & (y_test == 1.0)).sum().item()
-    print(tp, fp)
+    print("tp:", tp, "fp:", fp)
     assert (tp + tn + fp + fn) == total_sample
 
     if (tp + fp) == 0:

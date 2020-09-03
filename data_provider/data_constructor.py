@@ -1,4 +1,6 @@
 from datetime import datetime, timedelta
+import random
+
 import torch
 import pandas as pd
 from utils.csv_utils import read_individual_csv, read_index_csv, delete_temp_data, save_temp_data, NEGATIVE_CSV, \
@@ -9,10 +11,10 @@ individual_cols_sel = ['open', 'close', 'amount', 'high', 'low', 'volume',
                        'peTTM', 'pbMRQ']
 individual_cols_norm = [10., 10., 100000000., 10., 10., 10000000.,
                         1., 1.]
-# index_cols_sel = ['open', 'high', 'low', 'close', 'volume', 'amount']
-# index_cols_norm = [1000., 1000., 1000., 1000., 100000000., 100000000.]
-index_cols_sel = ['open', 'close', 'volume', 'amount']
-index_cols_norm = [1000., 1000., 100000000., 100000000.]
+index_cols_sel = ['open', 'high', 'low', 'close', 'volume', 'amount']
+index_cols_norm = [1000., 1000., 1000., 1000., 100000000., 100000000.]
+# index_cols_sel = ['open', 'close', 'volume', 'amount']
+# index_cols_norm = [1000., 1000., 100000000., 100000000.]
 
 device = torch.device('cuda:0')
 default_rolling_days = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 17, 20, 25, 30, 45, 60, 75,
@@ -28,14 +30,16 @@ class DataException(Exception):
 
 
 def construct_dataset(code, index_code_list, predict_days, thresholds, predict_type,
-                      val_days=150,
+                      val_days=0,
                       append_history=True,
                       append_index=True,
                       rolling_days=None,
                       save_data_to_csv=False,
                       return_data=False,
-                      return_only_val_data=False):
+                      return_only_val_data=False,
+                      val_date_list=None):
     """
+    :param val_date_list:
     :param return_only_val_data: only return val data for validation
     :param val_days: validation period, from today
     :param save_data_to_csv: whether save data to temp csv for manual investigate
@@ -51,7 +55,6 @@ def construct_dataset(code, index_code_list, predict_days, thresholds, predict_t
     :param return_data: return dataset x and y
     :return:
     """
-    assert predict_type == "average" or predict_type == "max"
     if rolling_days is None:
         rolling_days = default_rolling_days
     if append_history:
@@ -69,6 +72,9 @@ def construct_dataset(code, index_code_list, predict_days, thresholds, predict_t
     csv_data = csv_data[csv_data.tradestatus == 1]
     csv_data = csv_data[csv_data.isST == 0]
     csv_data = csv_data.reset_index(drop=True)
+
+    if csv_data.isna().sum().sum() != 0:
+        raise DataException(code)
 
     if len(csv_data) < max(rolling_days) + max(predict_days):
         raise DataException(code)
@@ -98,16 +104,13 @@ def construct_dataset(code, index_code_list, predict_days, thresholds, predict_t
 
     csv_data = csv_data.reset_index(drop=True)
 
-    if predict_type == "average":
-        _add_average_predicts(csv_data, predict_days, thresholds)
-    elif predict_type == "max":
-        _add_max_predicts(csv_data, predict_days, thresholds)
+    _add_predicts(csv_data, predict_days, thresholds, predict_type)
 
     if save_data_to_csv:
         csv_data.to_csv("temp/" + code + "_temp.csv")
 
     if not return_data:
-        _save_temp_data_to_csv_file(csv_data, title_list, val_days)
+        _save_temp_data_to_csv_file(csv_data, title_list, val_days, val_date_list)
     else:
         if return_only_val_data:
             csv_data['date'] = pd.to_datetime(csv_data['date'], format='%Y-%m-%d')
@@ -119,9 +122,19 @@ def construct_dataset(code, index_code_list, predict_days, thresholds, predict_t
         return convert_to_tensor(dataset_x), convert_to_tensor(dataset_y)
 
 
+def _generate_random_date(num_days, recent_val_days, max_history_days):
+    ret = set()
+    for i in range(num_days):
+        t = random.randint(recent_val_days, max_history_days)
+        date = datetime.today() + timedelta(days=-t)
+        ret.add(date)
+
+    return ret
+
+
 def construct_predict_data(code, index_code_list,
                            append_history=True,
-                           append_index=False,
+                           append_index=True,
                            rolling_days=None,
                            ):
     if rolling_days is None:
@@ -193,66 +206,75 @@ def _add_history_data(csv_data, title_list, rolling_days):
         title_list.append('pbMRQ_' + str(days))
 
 
-def _add_average_predicts(csv_data, predict_days, thresholds):
-    assert min(predict_days) >= 1
+def _add_predicts(csv_data, predict_days, thresholds, predict_type):
     for index in range(len(predict_days)):
         days = predict_days[index]
         threshold = thresholds[index]
-        csv_data['avg_chg_' + str(days)] = \
-            (csv_data['close'].rolling(days).mean().shift(-days) - csv_data['close']) / csv_data['close']
+        predict = predict_type[index]
+        assert predict == "max" or predict == "average"
         if threshold >= 0:
-            if index == 0:
-                csv_data['result'] = csv_data.apply(
-                    lambda x: 1.0 if x['avg_chg_' + str(days)] > threshold else 0.0, axis=1)
-            else:
-                csv_data['result'] = csv_data.apply(
-                    lambda x: 1.0 if (x['avg_chg_' + str(days)] > threshold and x['result'] == 1.0)
-                    else 0.0, axis=1)
+            if predict == "max":
+                _add_max_higher_prediction(csv_data, index, days, threshold)
+            elif predict == "average":
+                _add_average_higher_prediction(csv_data, index, days, threshold)
         else:
-            if index == 0:
-                csv_data['result'] = csv_data.apply(
-                    lambda x: 1.0 if x['avg_chg_' + str(days)] < threshold else 0.0, axis=1)
-            else:
-                csv_data['result'] = csv_data.apply(
-                    lambda x: 1.0 if (x['avg_chg_' + str(days)] < threshold and x['result'] == 1.0)
-                    else 0.0, axis=1)
+            if predict == "max":
+                _add_max_lower_prediction(csv_data, index, days, threshold)
+            elif predict == "average":
+                _add_average_lower_prediction(csv_data, index, days, threshold)
 
     end_index = len(csv_data)
     drop_days = max(predict_days)
-    # print(pd.DataFrame(csv_data, columns=['date', 'result', 'close', 'chg_1', 'chg_3']))
+    # print(pd.DataFrame(csv_data, columns=['date', 'result', 'close', 'low', 'avg_chg_3', 'max_chg_1', 'result']))
     csv_data.drop(labels=range(end_index - drop_days, end_index), inplace=True)
 
 
-def _add_max_predicts(csv_data, predict_days, thresholds):
-    for index in range(len(predict_days)):
-        days = predict_days[index]
-        threshold = thresholds[index]
+def _add_max_higher_prediction(csv_data, index, days, threshold):
+    csv_data['max_chg_' + str(days)] = \
+        (csv_data['high'].rolling(days).max().shift(-days) - csv_data['close']) / csv_data['close']
+    if index == 0:
+        csv_data['result'] = csv_data.apply(
+            lambda x: 1.0 if x['max_chg_' + str(days)] > threshold else 0.0, axis=1)
+    else:
+        csv_data['result'] = csv_data.apply(
+            lambda x: 1.0 if (x['max_chg_' + str(days)] > threshold and x['result'] == 1.0)
+            else 0.0, axis=1)
 
-        if threshold >= 0:
-            csv_data['max_chg_' + str(days)] = \
-                (csv_data['high'].rolling(days).max().shift(-days) - csv_data['close']) / csv_data['close']
-            if index == 0:
-                csv_data['result'] = csv_data.apply(
-                    lambda x: 1.0 if x['max_chg_' + str(days)] > threshold else 0.0, axis=1)
-            else:
-                csv_data['result'] = csv_data.apply(
-                    lambda x: 1.0 if (x['max_chg_' + str(days)] > threshold and x['result'] == 1.0)
-                    else 0.0, axis=1)
-        else:
-            csv_data['min_chg_' + str(days)] = \
-                (csv_data['low'].rolling(days).min().shift(-days) - csv_data['close']) / csv_data['close']
-            if index == 0:
-                csv_data['result'] = csv_data.apply(
-                    lambda x: 1.0 if x['min_chg_' + str(days)] < threshold else 0.0, axis=1)
-            else:
-                csv_data['result'] = csv_data.apply(
-                    lambda x: 1.0 if (x['min_chg_' + str(days)] < threshold and x['result'] == 1.0)
-                    else 0.0, axis=1)
 
-    end_index = len(csv_data)
-    drop_days = max(predict_days)
-    # print(pd.DataFrame(csv_data, columns=['date', 'result', 'close', 'low', 'chg_1', 'chg_3']))
-    csv_data.drop(labels=range(end_index - drop_days, end_index), inplace=True)
+def _add_max_lower_prediction(csv_data, index, days, threshold):
+    csv_data['min_chg_' + str(days)] = \
+        (csv_data['low'].rolling(days).min().shift(-days) - csv_data['close']) / csv_data['close']
+    if index == 0:
+        csv_data['result'] = csv_data.apply(
+            lambda x: 1.0 if x['min_chg_' + str(days)] < threshold else 0.0, axis=1)
+    else:
+        csv_data['result'] = csv_data.apply(
+            lambda x: 1.0 if (x['min_chg_' + str(days)] < threshold and x['result'] == 1.0)
+            else 0.0, axis=1)
+
+
+def _add_average_higher_prediction(csv_data, index, days, threshold):
+    csv_data['avg_chg_' + str(days)] = \
+        (csv_data['close'].rolling(days).mean().shift(-days) - csv_data['close']) / csv_data['close']
+    if index == 0:
+        csv_data['result'] = csv_data.apply(
+            lambda x: 1.0 if x['avg_chg_' + str(days)] > threshold else 0.0, axis=1)
+    else:
+        csv_data['result'] = csv_data.apply(
+            lambda x: 1.0 if (x['avg_chg_' + str(days)] > threshold and x['result'] == 1.0)
+            else 0.0, axis=1)
+
+
+def _add_average_lower_prediction(csv_data, index, days, threshold):
+    csv_data['avg_chg_' + str(days)] = \
+        (csv_data['close'].rolling(days).mean().shift(-days) - csv_data['close']) / csv_data['close']
+    if index == 0:
+        csv_data['result'] = csv_data.apply(
+            lambda x: 1.0 if x['avg_chg_' + str(days)] < threshold else 0.0, axis=1)
+    else:
+        csv_data['result'] = csv_data.apply(
+            lambda x: 1.0 if (x['avg_chg_' + str(days)] < threshold and x['result'] == 1.0)
+            else 0.0, axis=1)
 
 
 def _normalize_individual(frame):
@@ -265,14 +287,29 @@ def _normalize_index(frame):
         frame[index_cols_sel[index]] = frame[index_cols_sel[index]] / index_cols_norm[index]
 
 
-def _save_temp_data_to_csv_file(csv_data, title_list, val_days):
+def _save_temp_data_to_csv_file(csv_data, title_list, val_days, val_days_list):
     csv_data['date'] = pd.to_datetime(csv_data['date'], format='%Y-%m-%d')
 
+    start_date = datetime.today() + timedelta(days=-1500)
+    end_date = datetime.today() + timedelta(days=-1000)
+
     split_date = datetime.today() + timedelta(days=-val_days)
-    pos_train_data = (csv_data[(csv_data.date < split_date) & (csv_data.result == 1.0)])
-    neg_train_data = (csv_data[(csv_data.date < split_date) & (csv_data.result == 0.0)])
-    pos_val_data = (csv_data[(csv_data.date > split_date) & (csv_data.result == 1.0)])
-    neg_val_data = (csv_data[(csv_data.date > split_date) & (csv_data.result == 0.0)])
+    pos_train_data = (csv_data[((csv_data.date <= split_date)
+                               | (csv_data.date <= start_date) | (csv_data.date >= end_date))
+                               & (csv_data.result == 1.0)])
+    print("a", len(pos_train_data))
+    neg_train_data = (csv_data[((csv_data.date <= split_date)
+                               | (csv_data.date <= start_date) | (csv_data.date >= end_date))
+                               & (csv_data.result == 0.0)])
+    print("b", len(neg_train_data))
+    pos_val_data = (csv_data[((csv_data.date > split_date)
+                             | (csv_data.date > start_date) & (csv_data.date < end_date))
+                             & (csv_data.result == 1.0)])
+    print("c", len(pos_val_data))
+    neg_val_data = (csv_data[((csv_data.date > split_date)
+                             | (csv_data.date > start_date) & (csv_data.date < end_date))
+                             & (csv_data.result == 0.0)])
+    print("d", len(neg_val_data))
 
     save_temp_data(pos_train_data, title_list, POSITIVE_CSV)
     save_temp_data(neg_train_data, title_list, NEGATIVE_CSV)
@@ -280,11 +317,12 @@ def _save_temp_data_to_csv_file(csv_data, title_list, val_days):
     save_temp_data(neg_val_data, title_list, VAL_NEGATIVE_CSV)
 
 
-def construct_temp_csv_data(stock_list, index_code_list, predict_days, thresholds, predict_type):
+def construct_temp_csv_data(stock_list, index_code_list, predict_days, thresholds, predict_type, val_days):
     delete_temp_data()
+    val_dates = _generate_random_date(7, val_days, 5000)
     for code in stock_list:
         try:
-            construct_dataset(code, index_code_list,
+            construct_dataset(code, index_code_list, val_days=val_days, val_date_list=val_dates,
                               predict_days=predict_days, thresholds=thresholds, predict_type=predict_type)
             print(code, get_code_name(code), "processed")
         except DataException:

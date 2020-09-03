@@ -5,17 +5,17 @@ from data_provider.data_constructor import construct_dataset, construct_temp_csv
 from net.trainer import train_model, TrainingDataset, ValidationDataset
 from utils.stock_utils import get_code_name_list, get_stock_code_list_of_industry_contained_in_selected_set
 
-thresholds = [0.17]
-predict_days = [6]
-predict_type = "max"
+thresholds = [0.12, 0.05]
+predict_days = [15, 15]
+predict_type = ["max", "average"]
 
 
 def train():
-    industry_list = ["电子", "计算机", "汽车", "轻工制造", "通信", "医药生物", "电气设备", "机械设备", "化工", "家用电器"]
-    select_list = ["hs300"]
+    industry_list = ["银行"]
+    select_list = []
     stock_list = get_stock_code_list_of_industry_contained_in_selected_set(industry_list, select_list)
 
-    test_list = ["sh.600487"]
+    test_list = ["sh.600000"]
     stock_list.remove(test_list[0])
     print("total", len(stock_list), "stocks:", get_code_name_list(stock_list))
 
@@ -23,7 +23,7 @@ def train():
                                        predict_days=predict_days, thresholds=thresholds, predict_type=predict_type,
                                        return_data=True)
     construct_temp_csv_data(stock_list, index_list_analysis,
-                            predict_days=predict_days, thresholds=thresholds, predict_type=predict_type)
+                            predict_days=predict_days, thresholds=thresholds, predict_type=predict_type, val_days=30)
 
     train_pos_data, train_neg_data, val_pos_data, val_neg_data = load_dataset()
     train_dataset = TrainingDataset(train_pos_data, train_neg_data)

@@ -11,14 +11,19 @@ from utils.stock_utils import get_code_name, get_stock_code_list_of_industry_con
 
 device = torch.device('cuda:0')
 
-industry_list = ["电子", "计算机", "汽车", "轻工制造", "通信", "医药生物", "电气设备", "机械设备"]
-select_list = ["hs300"]
-predict_stock_list = get_stock_code_list_of_industry_contained_in_selected_set(industry_list, select_list)
-model, _, _, _, param = load("2020-09-02-22-33-07-94.76-15.60-0.25-model")
+model, _, _, _, param = load("2020-09-04-00-20-22-99.63-93.83-94.41-model")
 
 
-def predict_stocks(model_loaded, stock_list):
+def predict_stocks(model_loaded, industry_list=None, select_set=None):
     print(get_prediction_from_param(param))
+
+    if industry_list is None:
+        industry_list = param.get_industry_list()
+
+    if select_set is None:
+        select_set = param.get_select_set()
+
+    stock_list = get_stock_code_list_of_industry_contained_in_selected_set(industry_list, select_set)
     for stock in stock_list:
         try:
             data_x, recent_date = construct_predict_data(stock, index_list_analysis)
@@ -32,4 +37,4 @@ def predict_stocks(model_loaded, stock_list):
         #     print(stock, code_name, ":", ret, "with prob", prob, "on", recent_date)
 
 
-predict_stocks(model, predict_stock_list)
+predict_stocks(model)
