@@ -11,7 +11,7 @@ from utils.stock_utils import get_code_name, get_stock_code_list_of_industry_con
 
 device = torch.device('cuda:0')
 
-model, _, _, _, param = load("2020-09-04-00-20-22-99.63-93.83-94.41-model")
+model, _, _, _, param = load("2020-09-05-10-09-45-96.83-51.52-32.90-model")
 
 
 def predict_stocks(model_loaded, industry_list=None, select_set=None):

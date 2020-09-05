@@ -37,9 +37,9 @@ def construct_dataset(code, index_code_list, predict_days, thresholds, predict_t
                       save_data_to_csv=False,
                       return_data=False,
                       return_only_val_data=False,
-                      val_date_list=None):
+                      val_data=None):
     """
-    :param val_date_list:
+    :param val_data:
     :param return_only_val_data: only return val data for validation
     :param val_days: validation period, from today
     :param save_data_to_csv: whether save data to temp csv for manual investigate
@@ -110,7 +110,7 @@ def construct_dataset(code, index_code_list, predict_days, thresholds, predict_t
         csv_data.to_csv("temp/" + code + "_temp.csv")
 
     if not return_data:
-        _save_temp_data_to_csv_file(csv_data, title_list, val_days, val_date_list)
+        _save_temp_data_to_csv_file(csv_data, title_list, val_days, val_data)
     else:
         if return_only_val_data:
             csv_data['date'] = pd.to_datetime(csv_data['date'], format='%Y-%m-%d')
@@ -122,14 +122,23 @@ def construct_dataset(code, index_code_list, predict_days, thresholds, predict_t
         return convert_to_tensor(dataset_x), convert_to_tensor(dataset_y)
 
 
-def _generate_random_date(num_days, recent_val_days, max_history_days):
-    ret = set()
-    for i in range(num_days):
-        t = random.randint(recent_val_days, max_history_days)
-        date = datetime.today() + timedelta(days=-t)
-        ret.add(date)
-
+def _generate_val_data(num_sample, frac=0.8):
+    ret = []
+    for i in range(num_sample):
+        if random.randint(1, 100) >= 100 * frac:
+            date = datetime.today() + timedelta(days=-i)
+            ret.append(date.strftime('%Y-%m-%d'))
     return ret
+
+
+# def _generate_random_date(num_days, max_history_days):
+#     ret = set()
+#     for i in range(num_days):
+#         t = random.randint(0, max_history_days)
+#         date = datetime.today() + timedelta(days=-t)
+#         ret.add(date.strftime('%Y-%m-%d'))
+#
+#     return ret
 
 
 def construct_predict_data(code, index_code_list,
@@ -287,29 +296,31 @@ def _normalize_index(frame):
         frame[index_cols_sel[index]] = frame[index_cols_sel[index]] / index_cols_norm[index]
 
 
-def _save_temp_data_to_csv_file(csv_data, title_list, val_days, val_days_list):
-    csv_data['date'] = pd.to_datetime(csv_data['date'], format='%Y-%m-%d')
+def _save_temp_data_to_csv_file(csv_data, title_list, val_days, val_list):
+    total_length = len(csv_data)
+    split_recent_index = total_length - val_days
+    dataset_training = []
+    dataset_val = []
+    # csv_data['date'] = pd.to_datetime(csv_data['date'], format='%Y-%m-%d')
+    for index, row in csv_data.iterrows():
+        if row['date'] in val_list or index > split_recent_index:
+            dataset_val.append(row)
+        else:
+            dataset_training.append(row)
+    dataset_training = pd.DataFrame(dataset_training, columns=csv_data.columns)
+    dataset_val = pd.DataFrame(dataset_val, columns=csv_data.columns)
 
-    start_date = datetime.today() + timedelta(days=-1500)
-    end_date = datetime.today() + timedelta(days=-1000)
+    # csv_data['date'] = pd.to_datetime(csv_data['date'], format='%Y-%m-%d')
+    #
+    # split_date = datetime.today() + timedelta(days=-val_days)
+    # code = csv_data.code[0]
+    # dataset_training.to_csv("temp/" + code + "training.csv")
+    # dataset_val.to_csv("temp/" + code + "val.csv")
 
-    split_date = datetime.today() + timedelta(days=-val_days)
-    pos_train_data = (csv_data[((csv_data.date <= split_date)
-                               | (csv_data.date <= start_date) | (csv_data.date >= end_date))
-                               & (csv_data.result == 1.0)])
-    print("a", len(pos_train_data))
-    neg_train_data = (csv_data[((csv_data.date <= split_date)
-                               | (csv_data.date <= start_date) | (csv_data.date >= end_date))
-                               & (csv_data.result == 0.0)])
-    print("b", len(neg_train_data))
-    pos_val_data = (csv_data[((csv_data.date > split_date)
-                             | (csv_data.date > start_date) & (csv_data.date < end_date))
-                             & (csv_data.result == 1.0)])
-    print("c", len(pos_val_data))
-    neg_val_data = (csv_data[((csv_data.date > split_date)
-                             | (csv_data.date > start_date) & (csv_data.date < end_date))
-                             & (csv_data.result == 0.0)])
-    print("d", len(neg_val_data))
+    pos_train_data = (dataset_training[(dataset_training.result == 1.0)])
+    neg_train_data = (dataset_training[(dataset_training.result == 0.0)])
+    pos_val_data = (dataset_val[(dataset_val.result == 1.0)])
+    neg_val_data = (dataset_val[(dataset_val.result == 0.0)])
 
     save_temp_data(pos_train_data, title_list, POSITIVE_CSV)
     save_temp_data(neg_train_data, title_list, NEGATIVE_CSV)
@@ -319,10 +330,10 @@ def _save_temp_data_to_csv_file(csv_data, title_list, val_days, val_days_list):
 
 def construct_temp_csv_data(stock_list, index_code_list, predict_days, thresholds, predict_type, val_days):
     delete_temp_data()
-    val_dates = _generate_random_date(7, val_days, 5000)
+    val_data = _generate_val_data(20000, 0.8)
     for code in stock_list:
         try:
-            construct_dataset(code, index_code_list, val_days=val_days, val_date_list=val_dates,
+            construct_dataset(code, index_code_list, val_days=val_days, val_data=val_data,
                               predict_days=predict_days, thresholds=thresholds, predict_type=predict_type)
             print(code, get_code_name(code), "processed")
         except DataException:

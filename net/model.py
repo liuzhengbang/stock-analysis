@@ -55,8 +55,8 @@ class TrainingParam(object):
 
 
 def save(model, param, epoch, optimizer, batch_size, loss,
-         val_accuracy, val_precision, val_recall,
-         test_accuracy, test_precision, test_recall):
+         val_accuracy, val_precision, val_recall, val_f1,
+         test_accuracy, test_precision, test_recall, test_f1):
     str_time = time.strftime('%Y-%m-%d-%H-%M-%S', time.localtime(time.time()))
     path = str_time + "-" + "%.2f" % val_accuracy \
            + "-" + "%.2f" % val_precision \
@@ -74,9 +74,11 @@ def save(model, param, epoch, optimizer, batch_size, loss,
         'val_accuracy': val_accuracy,
         'val_precision': val_precision,
         'val_recall': val_recall,
+        'val_f1': val_f1,
         'test_accuracy': test_accuracy,
         'test_precision': test_precision,
-        'test_recall': test_recall
+        'test_recall': test_recall,
+        'test_f1': test_f1
     }, MODEL_DATA_BASE + path + MODEL_SUFFIX)
 
 

@@ -9,9 +9,9 @@ from utils.consts import index_list_analysis
 from utils.csv_utils import get_stock_code_list_by_industry
 from utils.stock_utils import get_stock_code_list_of_industry_contained_in_selected_set, get_code_name
 
-predict_days = [15]
-thresholds = [0.1]
-predict_type = ["max"]
+predict_days = [6]
+thresholds = [0.0001]
+predict_type = ["average"]
 
 
 def _validate_model_with_stock_list(model_name, stock_list, index_list_analysis_in, validate_with_not_training_data,
@@ -31,21 +31,22 @@ def _validate_model_with_stock_list(model_name, stock_list, index_list_analysis_
 
         with torch.no_grad():
             code_name = get_code_name(stock)
-            accuracy, precision, recall = validate(model, x_test, y_test)
+            accuracy, precision, recall, f1 = validate(model, x_test, y_test)
             if sum(y_test) != 0:
                 positive_sample = round(sum(y_test).item())
             else:
                 positive_sample = 0
-            print("stock {} {}: total sample {}, positive sample {}, accuracy {}%, precision {}%, recall {}%"
-                  .format(stock, code_name, len(x_test), positive_sample, accuracy, precision, recall))
+            print("stock {} {}: total sample {}, positive sample {}, accuracy {:.2f}%, precision {:.2f}%, "
+                  "recall {:.2f}% f1 {:.2f}% "
+                  .format(stock, code_name, len(x_test), positive_sample, accuracy, precision, recall, f1))
 
 
 def validate_model():
     validate_with_not_training_data = True
     all_stock_list = get_stock_code_list_of_industry_contained_in_selected_set(
-        ["银行"], [])
+        ["电子"], [])
     print(all_stock_list)
-    _validate_model_with_stock_list("2020-09-04-00-20-22-99.63-93.83-94.41-model",
+    _validate_model_with_stock_list("2020-09-05-10-25-18-96.90-53.00-34.19-model",
                                     all_stock_list, index_list_analysis, validate_with_not_training_data, val_days=45,
                                     predict_days_in=predict_days,
                                     thresholds_in=thresholds,

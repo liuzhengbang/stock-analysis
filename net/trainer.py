@@ -107,19 +107,22 @@ def train_model(train_dataset, val_dataset, x_test, y_test, param, prev_model=No
                 grad_sum += p.grad.norm()
             with torch.no_grad():
                 model.eval()
-                test_accuracy, test_precision, test_recall = validate(model, x_test, y_test)
+                test_accuracy, test_precision, test_recall, test_f1 = validate(model, x_test, y_test)
                 val_accuracy = 0
                 val_precision = 0
                 val_recall = 0
+                val_f1 = 0
                 if val_dataset is not None:
                     for x_val, y_val in val_loader:
                         x_val = x_val.to(device).float()
                         y_val = y_val.to(device).float()
 
-                        temp_val_accuracy, temp_val_precision, temp_val_recall = validate(model, x_val, y_val)
+                        temp_val_accuracy, temp_val_precision, temp_val_recall, temp_val_f1\
+                            = validate(model, x_val, y_val)
                         val_accuracy = val_accuracy + temp_val_accuracy * len(x_val) / len(val_dataset)
                         val_precision = val_precision + temp_val_precision * len(x_val) / len(val_dataset)
                         val_recall = val_recall + temp_val_recall * len(x_val) / len(val_dataset)
+                        val_f1 = val_f1 + temp_val_f1 * len(x_val) / len(val_dataset)
             if val_dataset is not None:
                 print("Loss after iteration {} with loss: {:.6f}, grad sum: {:.6f},"
                       " [test] accuracy {}%, precision {}%, recall {}%"
@@ -129,8 +132,8 @@ def train_model(train_dataset, val_dataset, x_test, y_test, param, prev_model=No
                               val_accuracy, val_precision, val_recall))
                 if val_precision > max_precision or epoch % 1000 == 0:
                     save(model, param, epoch + epoch_prev + 1, optimizer, batch_size, loss,
-                         val_accuracy, val_precision, val_recall,
-                         test_accuracy, test_precision, test_recall)
+                         val_accuracy, val_precision, val_recall, val_f1,
+                         test_accuracy, test_precision, test_recall, test_f1)
                     if val_precision > max_precision:
                         max_precision = val_precision
             else:
@@ -140,16 +143,16 @@ def train_model(train_dataset, val_dataset, x_test, y_test, param, prev_model=No
                               test_accuracy, test_precision, test_recall))
                 if test_precision > max_precision or epoch % 1000 == 0:
                     save(model, param, epoch + epoch_prev + 1, optimizer, batch_size, loss,
-                         "NA", "NA", "NA",
-                         test_accuracy, test_precision, test_recall)
+                         "NA", "NA", "NA", "NA",
+                         test_accuracy, test_precision, test_recall, test_f1)
                     if val_precision > max_precision:
                         max_precision = val_precision
 
-    test_accuracy, test_precision, test_recall = validate(model, x_test, y_test)
+    test_accuracy, test_precision, test_recall, test_f1 = validate(model, x_test, y_test)
     print("Test Dataset Accuracy:", test_accuracy, "Precision:", test_precision, "Recall:", test_recall)
     save(model, param, epoch + epoch_prev + 1, optimizer, batch_size, loss,
-         val_accuracy, val_precision, val_recall,
-         test_accuracy, test_precision, test_recall)
+         val_accuracy, val_precision, val_recall, val_f1,
+         test_accuracy, test_precision, test_recall, test_f1)
 
     end_time = datetime.now()
     time_delta = end_time - start_time
@@ -202,18 +205,27 @@ def validate(module, source, y_test):
     tn = ((y_prediction == 0.0) & (y_test == 0.0)).sum().item()
     fp = ((y_prediction == 1.0) & (y_test == 0.0)).sum().item()
     fn = ((y_prediction == 0.0) & (y_test == 1.0)).sum().item()
-    print("tp:", tp, "fp:", fp)
+    print("tp:", tp, "fp:", fp, "tn:", tn, "fn", fn)
     assert (tp + tn + fp + fn) == total_sample
 
     if (tp + fp) == 0:
         precision = 0
     else:
-        precision = tp / (tp + fp) * 100
+        precision = tp / (tp + fp)
 
     if (tp + fn) == 0:
         recall = 0
     else:
-        recall = tp / (tp + fn) * 100
-    accuracy = (tp + tn) / (tp + tn + fp + fn) * 100
+        recall = tp / (tp + fn)
 
-    return round(accuracy, 3), round(precision, 3), round(recall, 3)
+    if (tp + tn + fp + fn) == 0:
+        accuracy = 0
+    else:
+        accuracy = (tp + tn) / (tp + tn + fp + fn)
+
+    if (recall + precision) != 0:
+        f1 = 2 * recall * precision/(recall + precision)
+    else:
+        f1 = 0
+
+    return accuracy * 100, precision * 100, recall * 100, f1 * 100

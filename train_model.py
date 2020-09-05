@@ -5,17 +5,17 @@ from data_provider.data_constructor import construct_dataset, construct_temp_csv
 from net.trainer import train_model, TrainingDataset, ValidationDataset
 from utils.stock_utils import get_code_name_list, get_stock_code_list_of_industry_contained_in_selected_set
 
-thresholds = [0.12, 0.05]
-predict_days = [15, 15]
-predict_type = ["max", "average"]
+thresholds = [0.2]
+predict_days = [6]
+predict_type = ["max"]
 
 
 def train():
-    industry_list = ["银行"]
-    select_list = []
+    industry_list = ["电子", "通信", "计算机"]
+    select_list = ["hs300", "zz500"]
     stock_list = get_stock_code_list_of_industry_contained_in_selected_set(industry_list, select_list)
-
-    test_list = ["sh.600000"]
+    print(stock_list)
+    test_list = ["sz.300433"]
     stock_list.remove(test_list[0])
     print("total", len(stock_list), "stocks:", get_code_name_list(stock_list))
 
