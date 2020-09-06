@@ -3,6 +3,8 @@ import random
 
 import torch
 import pandas as pd
+
+from utils.consts import device
 from utils.csv_utils import read_individual_csv, read_index_csv, delete_temp_data, save_temp_data, NEGATIVE_CSV, \
     POSITIVE_CSV, VAL_POSITIVE_CSV, VAL_NEGATIVE_CSV, load_temp_data
 from utils.stock_utils import get_code_name
@@ -13,10 +15,7 @@ individual_cols_norm = [10., 10., 100000000., 10., 10., 10000000.,
                         1., 1.]
 index_cols_sel = ['open', 'high', 'low', 'close', 'volume', 'amount']
 index_cols_norm = [1000., 1000., 1000., 1000., 100000000., 100000000.]
-# index_cols_sel = ['open', 'close', 'volume', 'amount']
-# index_cols_norm = [1000., 1000., 100000000., 100000000.]
 
-device = torch.device('cuda:0')
 default_rolling_days = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 17, 20, 25, 30, 45, 60, 75,
                         100, 150, 225, 300, 400, 500, 600, 700, 800, 900, 1000]
 
@@ -29,176 +28,143 @@ class DataException(Exception):
         return repr(self.value)
 
 
-def construct_dataset(code, index_code_list, predict_days, thresholds, predict_type,
-                      val_days=0,
-                      append_history=True,
-                      append_index=True,
-                      rolling_days=None,
-                      save_data_to_csv=False,
-                      return_data=False,
-                      return_only_val_data=False,
-                      val_data=None):
-    """
-    :param val_data:
-    :param return_only_val_data: only return val data for validation
-    :param val_days: validation period, from today
-    :param save_data_to_csv: whether save data to temp csv for manual investigate
-    :param predict_type: max or average
-    :param append_history: whether append history data
-    :param rolling_days: history days to roll
-    :param return_data: whether just return data, without saving to csv
-    :param code: stock code
-    :param index_code_list: index code to append
-    :param predict_days: predicts n days after the given day, 1 predicts only next day
-    :param thresholds: threshold for stock rise indicts positive, 0: is enough 0.1: average 10% rise
-    :param append_index: whether append index
-    :param return_data: return dataset x and y
-    :return:
-    """
-    if rolling_days is None:
-        rolling_days = default_rolling_days
-    if append_history:
-        history_length = max(rolling_days)
+def construct_dataset_instantly(code, index_code_list, predict_days, predict_thresholds, predict_types,
+                                val_days=0,
+                                history_list=None,
+                                debug=True):
+    if history_list is None:
+        history_list = default_rolling_days
+
+    csv_data, title_list = _prepare_dataset(code, history_list, index_code_list, predict_days,
+                                            predict_thresholds, predict_types)
+
+    if debug:
+        csv_data.to_csv("temp/" + code + "_temp.csv")
+
+    if val_days != 0:
+        csv_data['date'] = pd.to_datetime(csv_data['date'], format='%Y-%m-%d')
+        split_date = datetime.today() + timedelta(days=-val_days)
+        csv_data = (csv_data[(csv_data.date >= split_date)])
+
+    dataset_x = pd.DataFrame(csv_data, columns=title_list)
+    dataset_y = pd.DataFrame(csv_data, columns=['result'])
+
+    return df_to_tensor(dataset_x), df_to_tensor(dataset_y)
+
+
+def construct_dataset_to_csv(code, index_code_list, predict_days, predict_thresholds, predict_types,
+                             history_list=None,
+                             val_date_list=None,
+                             debug=True):
+    if history_list is None:
+        history_list = default_rolling_days
+    if val_date_list is None:
+        val_date_list = []
+
+    csv_data, title_list = _prepare_dataset(code, history_list, index_code_list, predict_days,
+                                            predict_thresholds, predict_types)
+    if debug:
+        csv_data.to_csv("temp/" + code + "_temp.csv")
+
+    _save_temp_data_to_csv_file(csv_data, title_list, val_date_list, debug=debug)
+
+
+def _prepare_dataset(code, history_list, index_code_list, predict_days, predict_thresholds, predict_types):
+    if len(history_list) != 0:
+        history_length = max(history_list)
     else:
         history_length = 1
+    csv_data = _get_csv_data(code)
+    if len(csv_data) < history_length + max(predict_days):
+        raise DataException(code)
+    csv_data.drop(labels=0, inplace=True)
+    _normalize_individual(csv_data)
+    title_list = individual_cols_sel.copy()
+    csv_data = _append_index(csv_data, index_code_list, title_list)
+    if len(csv_data) <= max(predict_days):
+        raise DataException(code)
+    csv_data = csv_data.reset_index(drop=True)
+    csv_data = _append_history(csv_data, title_list, history_list)
+    csv_data = _append_predicts(csv_data, predict_days, predict_thresholds, predict_types)
+    return csv_data, title_list
 
+
+def _append_index(csv_data, index_code_list, title_list):
+    if len(index_code_list) == 0:
+        return
+
+    for index_code in index_code_list:
+        index_data = read_index_csv(index_code)
+        _normalize_index(index_data)
+
+        csv_data = pd.merge(csv_data, index_data, how="inner", on="date", suffixes=('', '_' + index_code))
+        for sel in index_cols_sel:
+            title_list.append(sel + '_' + index_code)
+    return csv_data
+
+
+def _get_csv_data(code):
     try:
         csv_data = read_individual_csv(code)
     except FileNotFoundError:
         raise DataException(code)
     except pd.errors.EmptyDataError:
         raise DataException(code)
-
     csv_data = csv_data[csv_data.tradestatus == 1]
     csv_data = csv_data[csv_data.isST == 0]
     csv_data = csv_data.reset_index(drop=True)
 
     if csv_data.isna().sum().sum() != 0:
         raise DataException(code)
-
-    if len(csv_data) < max(rolling_days) + max(predict_days):
-        raise DataException(code)
-
-    csv_data.drop(labels=0, inplace=True)
-    _normalize_individual(csv_data)
-
-    title_list = individual_cols_sel.copy()
-
-    if append_index:
-        for index_code in index_code_list:
-            index_data = read_index_csv(index_code)
-            _normalize_index(index_data)
-
-            csv_data = pd.merge(csv_data, index_data, how="inner", on="date", suffixes=('', '_' + index_code))
-            for sel in index_cols_sel:
-                title_list.append(sel + '_' + index_code)
-
-        if len(csv_data) <= max(predict_days):
-            raise DataException(code)
-    else:
-        csv_data = csv_data.reset_index(drop=True)
-
-    if append_history:
-        _add_history_data(csv_data, title_list, rolling_days)
-        csv_data.drop(labels=range(0, history_length - 1), axis=0, inplace=True)
-
-    csv_data = csv_data.reset_index(drop=True)
-
-    _add_predicts(csv_data, predict_days, thresholds, predict_type)
-
-    if save_data_to_csv:
-        csv_data.to_csv("temp/" + code + "_temp.csv")
-
-    if not return_data:
-        _save_temp_data_to_csv_file(csv_data, title_list, val_days, val_data)
-    else:
-        if return_only_val_data:
-            csv_data['date'] = pd.to_datetime(csv_data['date'], format='%Y-%m-%d')
-            split_date = datetime.today() + timedelta(days=-val_days)
-            csv_data = (csv_data[(csv_data.date >= split_date)])
-        dataset_x = pd.DataFrame(csv_data, columns=title_list)
-        dataset_y = pd.DataFrame(csv_data, columns=['result'])
-
-        return convert_to_tensor(dataset_x), convert_to_tensor(dataset_y)
+    return csv_data
 
 
-def _generate_val_data(num_sample, frac=0.8):
+def generate_val_data(num_sample, val_recent_days, val_frac=0.2):
     ret = []
     for i in range(num_sample):
-        if random.randint(1, 100) >= 100 * frac:
+        if i < val_recent_days or random.randint(1, 100) < 100 * val_frac:
             date = datetime.today() + timedelta(days=-i)
             ret.append(date.strftime('%Y-%m-%d'))
     return ret
 
 
-# def _generate_random_date(num_days, max_history_days):
-#     ret = set()
-#     for i in range(num_days):
-#         t = random.randint(0, max_history_days)
-#         date = datetime.today() + timedelta(days=-t)
-#         ret.add(date.strftime('%Y-%m-%d'))
-#
-#     return ret
-
-
-def construct_predict_data(code, index_code_list,
-                           append_history=True,
-                           append_index=True,
-                           rolling_days=None,
+def construct_predict_data(code,
+                           index_code_list,
+                           history_list=None,
                            ):
-    if rolling_days is None:
-        rolling_days = default_rolling_days
-    if append_history:
-        history_length = rolling_days[len(rolling_days) - 1]
-    else:
-        history_length = 1
+    if history_list is None:
+        history_list = default_rolling_days
 
-    try:
-        csv_data = read_individual_csv(code)
-    except FileNotFoundError:
-        raise DataException(code)
-    except pd.errors.EmptyDataError:
-        raise DataException(code)
+    csv_data = _get_csv_data(code)
 
-    csv_data = csv_data[csv_data.tradestatus == 1]
-    csv_data = csv_data[csv_data.isST == 0]
-    csv_data = csv_data.reset_index(drop=True)
-
-    if len(csv_data) < max(rolling_days):
+    if len(csv_data) < max(history_list):
         raise DataException(code)
 
     _normalize_individual(csv_data)
 
     title_list = individual_cols_sel.copy()
 
-    if append_index:
-        for index_code in index_code_list:
-            index_data = read_index_csv(index_code)
-            _normalize_index(index_data)
+    csv_data = _append_index(csv_data, index_code_list, title_list)
 
-            csv_data = pd.merge(csv_data, index_data, how="inner", on="date", suffixes=('', '_' + index_code))
-            for sel in index_cols_sel:
-                title_list.append(sel + '_' + index_code)
-    else:
-        csv_data = csv_data.reset_index(drop=True)
-
-    if append_history:
-        _add_history_data(csv_data, title_list, rolling_days)
-        csv_data.drop(labels=range(0, history_length - 1), axis=0, inplace=True)
+    csv_data = csv_data.reset_index(drop=True)
+    csv_data = _append_history(csv_data, title_list, history_list)
 
     csv_data = pd.DataFrame(csv_data).tail(1)
     csv_data = csv_data.reset_index(drop=True)
     predict_data = pd.DataFrame(csv_data, columns=title_list)
-    return convert_to_tensor(predict_data), csv_data['date'].item()
+    return df_to_tensor(predict_data), csv_data['date'].item()
 
 
-def convert_to_tensor(dataset):
+def df_to_tensor(dataset):
     return torch.tensor(dataset.values).to(device).float()
 
 
-def _add_history_data(csv_data, title_list, rolling_days):
-    assert min(rolling_days) >= 2
-    for days in rolling_days:
+def _append_history(csv_data, title_list, history_list):
+    if len(history_list) == 0:
+        return
+
+    assert min(history_list) >= 2
+    for days in history_list:
         csv_data['pctChg_' + str(days)] = csv_data['pctChg'].rolling(days).sum()
         title_list.append('pctChg_' + str(days))
         csv_data['volume_' + str(days)] = csv_data['volume'].rolling(days).mean()
@@ -214,8 +180,13 @@ def _add_history_data(csv_data, title_list, rolling_days):
         csv_data['pbMRQ_' + str(days)] = csv_data['pbMRQ'].rolling(days).mean()
         title_list.append('pbMRQ_' + str(days))
 
+    history_length = max(history_list)
+    csv_data.drop(labels=range(0, history_length - 1), axis=0, inplace=True)
+    csv_data = csv_data.reset_index(drop=True)
+    return csv_data
 
-def _add_predicts(csv_data, predict_days, thresholds, predict_type):
+
+def _append_predicts(csv_data, predict_days, thresholds, predict_type):
     for index in range(len(predict_days)):
         days = predict_days[index]
         threshold = thresholds[index]
@@ -236,6 +207,8 @@ def _add_predicts(csv_data, predict_days, thresholds, predict_type):
     drop_days = max(predict_days)
     # print(pd.DataFrame(csv_data, columns=['date', 'result', 'close', 'low', 'avg_chg_3', 'max_chg_1', 'result']))
     csv_data.drop(labels=range(end_index - drop_days, end_index), inplace=True)
+    csv_data = csv_data.reset_index(drop=True)
+    return csv_data
 
 
 def _add_max_higher_prediction(csv_data, index, days, threshold):
@@ -296,26 +269,21 @@ def _normalize_index(frame):
         frame[index_cols_sel[index]] = frame[index_cols_sel[index]] / index_cols_norm[index]
 
 
-def _save_temp_data_to_csv_file(csv_data, title_list, val_days, val_list):
-    total_length = len(csv_data)
-    split_recent_index = total_length - val_days
+def _save_temp_data_to_csv_file(csv_data, title_list, val_list, debug=False):
     dataset_training = []
     dataset_val = []
-    # csv_data['date'] = pd.to_datetime(csv_data['date'], format='%Y-%m-%d')
     for index, row in csv_data.iterrows():
-        if row['date'] in val_list or index > split_recent_index:
+        if row['date'] in val_list:
             dataset_val.append(row)
         else:
             dataset_training.append(row)
     dataset_training = pd.DataFrame(dataset_training, columns=csv_data.columns)
     dataset_val = pd.DataFrame(dataset_val, columns=csv_data.columns)
 
-    # csv_data['date'] = pd.to_datetime(csv_data['date'], format='%Y-%m-%d')
-    #
-    # split_date = datetime.today() + timedelta(days=-val_days)
-    # code = csv_data.code[0]
-    # dataset_training.to_csv("temp/" + code + "training.csv")
-    # dataset_val.to_csv("temp/" + code + "val.csv")
+    if debug:
+        code = csv_data.code[0]
+        dataset_training.to_csv("temp/" + code + "_training.csv")
+        dataset_val.to_csv("temp/" + code + "_val.csv")
 
     pos_train_data = (dataset_training[(dataset_training.result == 1.0)])
     neg_train_data = (dataset_training[(dataset_training.result == 0.0)])
@@ -328,16 +296,21 @@ def _save_temp_data_to_csv_file(csv_data, title_list, val_days, val_list):
     save_temp_data(neg_val_data, title_list, VAL_NEGATIVE_CSV)
 
 
-def construct_temp_csv_data(stock_list, index_code_list, predict_days, thresholds, predict_type, val_days):
+def construct_temp_csv_data(stock_list, index_code_list,
+                            predict_days, thresholds, predict_type,
+                            val_date_list):
     delete_temp_data()
-    val_data = _generate_val_data(20000, 0.8)
+    total_stocks = 0
     for code in stock_list:
         try:
-            construct_dataset(code, index_code_list, val_days=val_days, val_data=val_data,
-                              predict_days=predict_days, thresholds=thresholds, predict_type=predict_type)
+            construct_dataset_to_csv(code, index_code_list, val_date_list=val_date_list,
+                                     predict_days=predict_days, predict_thresholds=thresholds,
+                                     predict_types=predict_type)
+            total_stocks = total_stocks + 1
             print(code, get_code_name(code), "processed")
         except DataException:
             print(code, get_code_name(code), "not processed")
+    print("total", total_stocks, "stocks constructed")
 
 
 def load_dataset():

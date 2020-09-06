@@ -1,17 +1,17 @@
 # coding=gbk
 import torch
 
-from data_provider.data_constructor import construct_predict_data
-from net.model import load, get_prediction_from_param
-from net.trainer import predict_with_prob
+from dataset.data_constructor import construct_predict_data
+from model.model_persistence import load, get_prediction_from_param
+from model.trainer import predict_with_prob
 from utils.consts import index_list_analysis
 from utils.csv_utils import get_stock_code_list_by_industry
-from data_provider.data_constructor import convert_to_tensor, construct_dataset, DataException
-from utils.stock_utils import get_code_name, get_stock_code_list_of_industry_contained_in_selected_set
+from dataset.data_constructor import df_to_tensor, construct_dataset_instantly, DataException
+from utils.stock_utils import get_code_name, stock_code_list_by_industry_in_constituent
 
 device = torch.device('cuda:0')
 
-model, _, _, _, param = load("2020-09-05-10-09-45-96.83-51.52-32.90-model")
+model, _, _, _, param = load("20200906-133514-82.4-15.3-model_hs300")
 
 
 def predict_stocks(model_loaded, industry_list=None, select_set=None):
@@ -21,9 +21,9 @@ def predict_stocks(model_loaded, industry_list=None, select_set=None):
         industry_list = param.get_industry_list()
 
     if select_set is None:
-        select_set = param.get_select_set()
+        select_set = param.get_constituent()
 
-    stock_list = get_stock_code_list_of_industry_contained_in_selected_set(industry_list, select_set)
+    stock_list = stock_code_list_by_industry_in_constituent(industry_list, select_set)
     for stock in stock_list:
         try:
             data_x, recent_date = construct_predict_data(stock, index_list_analysis)

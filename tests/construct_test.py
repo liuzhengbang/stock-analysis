@@ -1,7 +1,7 @@
 import os
 import unittest
 
-from data_provider.data_constructor import construct_dataset
+from dataset.data_constructor import construct_dataset_instantly, construct_dataset_to_csv
 from utils.csv_utils import *
 
 
@@ -10,10 +10,9 @@ class TestConstructDataset(unittest.TestCase):
         delete_temp_data()
 
     def test_construct_basic(self):
-        construct_dataset("test", ["index_test"], predict_type=["average"], predict_days=[1], rolling_days=[2, 4],
-                          append_index=True,
-                          val_days=0,
-                          thresholds=[0.1])
+        construct_dataset_to_csv("test", ["index_test"], predict_types=["average"], predict_days=[1],
+                                 history_list=[2, 4],
+                                 predict_thresholds=[0.1])
         pos_data = load_temp_data(POSITIVE_CSV)
         neg_data = load_temp_data(NEGATIVE_CSV)
         #          date  result  close  chg_1
@@ -51,10 +50,9 @@ class TestConstructDataset(unittest.TestCase):
         self.assertAlmostEqual(pos_data['open_index_test'].tolist()[0], 3.3415276)
 
     def test_construct_predict_average_pos(self):
-        construct_dataset("test_1", ["index_test"], predict_type=["average", "average"], predict_days=[1, 3], rolling_days=[2],
-                          append_index=True,
-                          val_days=0,
-                          thresholds=[0.07, 0.01])
+        construct_dataset_to_csv("test_1", ["index_test"], predict_types=["average", "average"], predict_days=[1, 3],
+                                 history_list=[2],
+                                 predict_thresholds=[0.07, 0.01])
         pos_data = load_temp_data(POSITIVE_CSV)
         neg_data = load_temp_data(NEGATIVE_CSV)
 
@@ -79,10 +77,9 @@ class TestConstructDataset(unittest.TestCase):
                                   'pbMRQ_2'])
 
     def test_construct_predict_average_neg(self):
-        construct_dataset("test_1", ["index_test"], predict_type=["average","average"], predict_days=[1, 3], rolling_days=[2],
-                          append_index=True,
-                          val_days=0,
-                          thresholds=[-0.08, -0.01])
+        construct_dataset_to_csv("test_1", ["index_test"], predict_types=["average", "average"], predict_days=[1, 3],
+                                 history_list=[2],
+                                 predict_thresholds=[-0.08, -0.01])
         pos_data = load_temp_data(POSITIVE_CSV)
         neg_data = load_temp_data(NEGATIVE_CSV)
 
@@ -105,10 +102,9 @@ class TestConstructDataset(unittest.TestCase):
                                   'pctChg_2', 'volume_2', 'ma_2', 'highest_2', 'lowest_2', 'peTTM_2', 'pbMRQ_2'])
 
     def test_construct_predict_average_equal(self):
-        construct_dataset("test_1", ["index_test"], predict_type=["average", "average"],
-                          append_index=True,
-                          predict_days=[1, 3], rolling_days=[2],
-                          val_days=0, thresholds=[0, 0])
+        construct_dataset_to_csv("test_1", ["index_test"], predict_types=["average", "average"],
+                                 predict_days=[1, 3], history_list=[2],
+                                 predict_thresholds=[0, 0])
         pos_data = load_temp_data(POSITIVE_CSV)
         neg_data = load_temp_data(NEGATIVE_CSV)
 
@@ -132,9 +128,8 @@ class TestConstructDataset(unittest.TestCase):
                                   'pctChg_2', 'volume_2', 'ma_2', 'highest_2', 'lowest_2', 'peTTM_2', 'pbMRQ_2'])
 
     def test_construct_predict_max_pos(self):
-        construct_dataset("test_2", ["index_test"], predict_type=["max", "max"],
-                          append_index=True,
-                          predict_days=[1, 3], rolling_days=[2], val_days=0, thresholds=[0.07, 0.01])
+        construct_dataset_to_csv("test_2", ["index_test"], predict_types=["max", "max"],
+                                 predict_days=[1, 3], history_list=[2], predict_thresholds=[0.07, 0.01])
         pos_data = load_temp_data(POSITIVE_CSV)
         neg_data = load_temp_data(NEGATIVE_CSV)
 
@@ -158,10 +153,9 @@ class TestConstructDataset(unittest.TestCase):
                                   'pctChg_2', 'volume_2', 'ma_2', 'highest_2', 'lowest_2', 'peTTM_2', 'pbMRQ_2'])
 
     def test_construct_predict_max_neg(self):
-        construct_dataset("test_2", ["index_test"], predict_type=["max", "max"],
-                          append_index=True,
-                          predict_days=[1, 3], rolling_days=[2], val_days=0,
-                          thresholds=[-0.04, -0.02])
+        construct_dataset_to_csv("test_2", ["index_test"], predict_types=["max", "max"],
+                                 predict_days=[1, 3], history_list=[2],
+                                 predict_thresholds=[-0.04, -0.02])
         pos_data = load_temp_data(POSITIVE_CSV)
         neg_data = load_temp_data(NEGATIVE_CSV)
 
@@ -185,10 +179,9 @@ class TestConstructDataset(unittest.TestCase):
                                   'pctChg_2', 'volume_2', 'ma_2', 'highest_2', 'lowest_2', 'peTTM_2', 'pbMRQ_2'])
 
     def test_construct_predict_max_equal(self):
-        construct_dataset("test_2", ["index_test"], predict_type=["max", "max"],
-                          append_index=True,
-                          predict_days=[1, 3], rolling_days=[2], val_days=0,
-                          thresholds=[0, 0])
+        construct_dataset_to_csv("test_2", ["index_test"], predict_types=["max", "max"],
+                                 predict_days=[1, 3], history_list=[2],
+                                 predict_thresholds=[0, 0])
         pos_data = load_temp_data(POSITIVE_CSV)
         neg_data = load_temp_data(NEGATIVE_CSV)
 
@@ -212,10 +205,9 @@ class TestConstructDataset(unittest.TestCase):
                                   'pctChg_2', 'volume_2', 'ma_2', 'highest_2', 'lowest_2', 'peTTM_2', 'pbMRQ_2'])
 
     def test_construct_predict_mix_equal(self):
-        construct_dataset("test_2", ["index_test"], predict_type=["max", "average"],
-                          append_index=True,
-                          predict_days=[1, 3], rolling_days=[2], val_days=0,
-                          thresholds=[0.07, 0.09])
+        construct_dataset_to_csv("test_2", ["index_test"], predict_types=["max", "average"],
+                                 predict_days=[1, 3], history_list=[2],
+                                 predict_thresholds=[0.07, 0.09])
 
         pos_data = load_temp_data(POSITIVE_CSV)
         neg_data = load_temp_data(NEGATIVE_CSV)

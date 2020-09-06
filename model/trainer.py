@@ -4,8 +4,9 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 
-from net.model import save, load
-from net.net import NeuralNetwork as Net
+from dataset.data_constructor import construct_temp_csv_data, load_dataset
+from model.model_persistence import save, load
+from model.net import NeuralNetwork as Net
 from torch.utils.data.dataset import Dataset
 
 from utils.consts import device
@@ -67,14 +68,27 @@ def train_model(train_dataset, val_dataset, x_test, y_test, param, prev_model=No
     start_time = datetime.now()
     print("start training", start_time.strftime("%Y-%m-%d-%H-%M-%S"))
     loader = DataLoader(train_dataset, batch_size=batch_size, num_workers=0, shuffle=False)
-    val_loader = None
-    if val_dataset is not None:
-        val_loader = DataLoader(val_dataset, batch_size=20000, num_workers=0, shuffle=False)
+    val_loader = DataLoader(val_dataset, batch_size=20000, num_workers=0, shuffle=False)
 
     if prev_model is not None:
         model, optimizer, epoch_prev, loss, param_prev = load(prev_model)
-        param.set_x_size(param_prev.get_x_size())
-        param.set_net_param(param_prev.get_net_param())
+        param.set_net_input_size(param_prev.get_net_input_size())
+        param.set_net_layers(param_prev.get_net_layers())
+        predict_days, predict_thresholds, predict_types = param_prev.get_predict_param()
+
+        construct_temp_csv_data(param_prev.get_training_stock_list(),
+                                index_code_list=param_prev.get_index_code_list,
+                                predict_days=predict_days,
+                                thresholds=predict_thresholds,
+                                predict_type=predict_types,
+                                val_date_list=param_prev.get_val_date_list())
+
+        train_pos_data, train_neg_data, val_pos_data, val_neg_data = load_dataset()
+        train_dataset = TrainingDataset(train_pos_data, train_neg_data)
+        val_dataset = ValidationDataset(val_pos_data, val_neg_data)
+        loader = DataLoader(train_dataset, batch_size=batch_size, num_workers=0, shuffle=False)
+        val_loader = DataLoader(val_dataset, batch_size=20000, num_workers=0, shuffle=False)
+
     else:
         input_size = x_test.shape[1]
         net_param = [3000, 300]
@@ -82,8 +96,8 @@ def train_model(train_dataset, val_dataset, x_test, y_test, param, prev_model=No
         optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
         epoch_prev = 0
         loss = -1
-        param.set_x_size(input_size)
-        param.set_net_param(net_param)
+        param.set_net_input_size(input_size)
+        param.set_net_layers(net_param)
 
     pos_weight = torch.tensor([weight]).to(device)
     criterion = nn.BCEWithLogitsLoss(weight=pos_weight)
@@ -123,27 +137,16 @@ def train_model(train_dataset, val_dataset, x_test, y_test, param, prev_model=No
                         val_precision = val_precision + temp_val_precision * len(x_val) / len(val_dataset)
                         val_recall = val_recall + temp_val_recall * len(x_val) / len(val_dataset)
                         val_f1 = val_f1 + temp_val_f1 * len(x_val) / len(val_dataset)
-            if val_dataset is not None:
+
                 print("Loss after iteration {} with loss: {:.6f}, grad sum: {:.6f},"
-                      " [test] accuracy {}%, precision {}%, recall {}%"
-                      " [validation] accuracy {:.2f}%, precision {:.2f}%, recall {:.2f}%"
+                      " [test] accuracy {:.2f}%, precision {:.2f}%, recall {:.2f}%"
+                      " [validation] accuracy {:.2f}%, precision {:.2f}%, recall {:.2f}%, val_f1 {:.2f}"
                       .format(epoch, loss.data, grad_sum.data,
                               test_accuracy, test_precision, test_recall,
-                              val_accuracy, val_precision, val_recall))
+                              val_accuracy, val_precision, val_recall, val_f1))
                 if val_precision > max_precision or epoch % 1000 == 0:
                     save(model, param, epoch + epoch_prev + 1, optimizer, batch_size, loss,
                          val_accuracy, val_precision, val_recall, val_f1,
-                         test_accuracy, test_precision, test_recall, test_f1)
-                    if val_precision > max_precision:
-                        max_precision = val_precision
-            else:
-                print("Loss after iteration {} with loss: {:.6f}, grad sum: {:.6f},"
-                      " test accuracy {}%, precision {}%, recall {}%"
-                      .format(epoch, loss.data, grad_sum.data,
-                              test_accuracy, test_precision, test_recall))
-                if test_precision > max_precision or epoch % 1000 == 0:
-                    save(model, param, epoch + epoch_prev + 1, optimizer, batch_size, loss,
-                         "NA", "NA", "NA", "NA",
                          test_accuracy, test_precision, test_recall, test_f1)
                     if val_precision > max_precision:
                         max_precision = val_precision

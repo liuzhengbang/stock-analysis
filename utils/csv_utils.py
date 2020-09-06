@@ -132,7 +132,7 @@ def get_all_stocks_code_and_name():
     return ret
 
 
-def get_stock_code_list(stock):
+def get_stock_by_constituent(stock):
     ret = pd.read_csv(STOCK_DATA_DIR_BASE + stock + "_stocks.csv", usecols=["code"])
     return ret.values.flatten().tolist()
 

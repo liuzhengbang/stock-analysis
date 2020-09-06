@@ -2,30 +2,45 @@
 import pandas
 import torch
 
-from data_provider.data_constructor import construct_dataset, DataException
-from net.model import load
-from net.trainer import validate, predict
+from dataset.data_constructor import construct_dataset_instantly, DataException
+from model.model_persistence import load
+from model.trainer import validate, predict
 from utils.consts import index_list_analysis
 from utils.csv_utils import get_stock_code_list_by_industry
-from utils.stock_utils import get_stock_code_list_of_industry_contained_in_selected_set, get_code_name
-
-predict_days = [6]
-thresholds = [0.0001]
-predict_type = ["average"]
+from utils.stock_utils import stock_code_list_by_industry_in_constituent, get_code_name
 
 
-def _validate_model_with_stock_list(model_name, stock_list, index_list_analysis_in, validate_with_not_training_data,
+def validate_model():
+    predict_thresholds = [0.05]
+    predict_days = [15]
+    predict_types = ["max"]
+    val_days = 30
+    model, _, _, _, param = load("20200906-213432-94.1-50.5-model")
+    industry_list = param.get_industry_list()
+    select_set = param.get_constituent()
+
+    all_stock_list = stock_code_list_by_industry_in_constituent(
+        industry_list, select_set)
+    print(all_stock_list)
+    _validate_model_with_stock_list(model,
+                                    stock_list=all_stock_list, index_list_analysis_in=index_list_analysis,
+                                    val_days=val_days,
+                                    predict_days_in=predict_days,
+                                    thresholds_in=predict_thresholds,
+                                    predict_type_in=predict_types)
+
+
+def _validate_model_with_stock_list(model, stock_list, index_list_analysis_in,
                                     val_days,
                                     predict_days_in, thresholds_in, predict_type_in):
-    model, _, _, _, _ = load(model_name)
+
     for stock in stock_list:
         try:
-            x_test, y_test = construct_dataset(stock, index_list_analysis_in,
-                                               predict_days=predict_days_in, thresholds=thresholds_in,
-                                               val_days=val_days,
-                                               predict_type=predict_type_in,
-                                               return_data=True,
-                                               return_only_val_data=validate_with_not_training_data)
+            x_test, y_test = construct_dataset_instantly(stock, index_list_analysis_in,
+                                                         predict_days=predict_days_in,
+                                                         predict_thresholds=thresholds_in,
+                                                         val_days=val_days,
+                                                         predict_types=predict_type_in)
         except DataException:
             continue
 
@@ -41,24 +56,12 @@ def _validate_model_with_stock_list(model_name, stock_list, index_list_analysis_
                   .format(stock, code_name, len(x_test), positive_sample, accuracy, precision, recall, f1))
 
 
-def validate_model():
-    validate_with_not_training_data = True
-    all_stock_list = get_stock_code_list_of_industry_contained_in_selected_set(
-        ["µç×Ó"], [])
-    print(all_stock_list)
-    _validate_model_with_stock_list("2020-09-05-10-25-18-96.90-53.00-34.19-model",
-                                    all_stock_list, index_list_analysis, validate_with_not_training_data, val_days=45,
-                                    predict_days_in=predict_days,
-                                    thresholds_in=thresholds,
-                                    predict_type_in=predict_type)
-
-
 def save_predict_result(code, model):
-    x_test, y_test = construct_dataset(code, index_list_analysis,
-                                       predict_days=predict_days, thresholds=thresholds,
-                                       predict_type=predict_type,
-                                       save_data_to_csv=True,
-                                       return_data=True)
+    x_test, y_test = construct_dataset_instantly(code, index_list_analysis,
+                                                 predict_days=predict_days,
+                                                 predict_thresholds=thresholds,
+                                                 predict_types=predict_type,
+                                                 debug=True)
     model, _, _, _, _ = load(model)
     y_prediction = predict(model, x_test)
     y = y_prediction.cpu().numpy()

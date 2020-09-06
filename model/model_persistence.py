@@ -2,7 +2,7 @@ import time
 from os.path import isfile
 
 import torch
-from net.net import NeuralNetwork as Net
+from model.net import NeuralNetwork as Net
 from utils.consts import device
 
 MODEL_DATA_BASE = "model_data/"
@@ -11,58 +11,65 @@ MODEL_SUFFIX = ".pt"
 
 
 class TrainingParam(object):
-    def __init__(self, industry_list, selected_set, training_stock_list, test_stock_list, index_list,
-                 predict_days, thresholds, predict_type):
+    def __init__(self, industry_list, constituent_list, training_stock_list, test_stock_list, index_code_list,
+                 val_date_list,
+                 predict_days, predict_thresholds, predict_types):
         self.industry_list = industry_list
         self.training_stock_list = training_stock_list
         self.test_stock_list = test_stock_list
-        self.index_list = index_list
-        self.selected_set = selected_set
+        self.index_code_list = index_code_list
+        self.constituent_list = constituent_list
+        self.val_date_list = val_date_list
 
-        self.x_size = None
-        self.net_param = None
+        self.net_input_size = None
+        self.net_layers = None
 
         self.predict_days = predict_days
-        self.thresholds = thresholds
-        self.predict_type = predict_type
+        self.predict_thresholds = predict_thresholds
+        self.predict_types = predict_types
 
     def get_predict_param(self):
-        return self.predict_days, self.thresholds, self.predict_type
+        return self.predict_days, self.predict_thresholds, self.predict_types
 
-    def set_x_size(self, x_size):
-        self.x_size = x_size
+    def set_net_input_size(self, x_size):
+        self.net_input_size = x_size
 
-    def set_net_param(self, net_param):
-        self.net_param = net_param
+    def set_net_layers(self, net_param):
+        self.net_layers = net_param
 
-    def get_x_size(self):
-        return self.x_size
+    def get_net_input_size(self):
+        return self.net_input_size
 
-    def get_net_param(self):
-        return self.net_param
-
-    def get_type(self):
-        return self.industry_list
+    def get_net_layers(self):
+        return self.net_layers
 
     def get_training_stock_list(self):
         return self.training_stock_list
 
+    def get_index_code_list(self):
+        return self.index_code_list
+
+    def get_test_stock_list(self):
+        return self.test_stock_list
+
     def get_industry_list(self):
         return self.industry_list
 
-    def get_select_set(self):
-        return self.selected_set
+    def get_constituent(self):
+        return self.constituent_list
+
+    def get_val_date_list(self):
+        return self.val_date_list
 
 
 def save(model, param, epoch, optimizer, batch_size, loss,
          val_accuracy, val_precision, val_recall, val_f1,
          test_accuracy, test_precision, test_recall, test_f1):
-    str_time = time.strftime('%Y-%m-%d-%H-%M-%S', time.localtime(time.time()))
-    path = str_time + "-" + "%.2f" % val_accuracy \
-           + "-" + "%.2f" % val_precision \
-           + "-" + "%.2f" % val_recall \
-           + "-model"
-    print("save model as:", path)
+    str_time = time.strftime('%Y%m%d-%H%M%S', time.localtime(time.time()))
+    persistence_file_name = str_time + "-" + "%.1f" % val_accuracy \
+                                     + "-" + "%.1f" % val_precision \
+                                     + "-model"
+    print("save model as:", persistence_file_name)
 
     torch.save({
         'epoch': epoch,
@@ -79,7 +86,7 @@ def save(model, param, epoch, optimizer, batch_size, loss,
         'test_precision': test_precision,
         'test_recall': test_recall,
         'test_f1': test_f1
-    }, MODEL_DATA_BASE + path + MODEL_SUFFIX)
+    }, MODEL_DATA_BASE + persistence_file_name + MODEL_SUFFIX)
 
 
 def load(path):
@@ -89,7 +96,7 @@ def load(path):
         whole_path = MODEL_DATA_BASE + path + MODEL_SUFFIX
     checkpoint = torch.load(whole_path)
     param = checkpoint['param']
-    model = Net(param.get_x_size(), param.get_net_param()).to(device=device)
+    model = Net(param.get_net_input_size(), param.get_net_layers()).to(device=device)
     optimizer = torch.optim.Adam(model.parameters())
 
     model.load_state_dict(checkpoint['model_state_dict'])
@@ -102,8 +109,9 @@ def load(path):
         val_accuracy = checkpoint['val_accuracy']
         val_precision = checkpoint['val_precision']
         val_recall = checkpoint['val_recall']
-        print("with loss", round(loss.item(), 2),
-              "val accuracy", val_accuracy, "precision", val_precision, "recall", val_recall)
+        val_f1 = checkpoint['val_f1']
+        print("with loss {:.2f}, val accuracy {:.2f}, val precision {:.2f}, val recall {:.2f} val_f1 {:.2f}"
+              .format(loss.item(), val_accuracy, val_precision, val_recall, val_f1))
     except KeyError:
         print("failed to get validation checkpoint")
 
