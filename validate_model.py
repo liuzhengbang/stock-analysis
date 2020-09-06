@@ -9,13 +9,15 @@ from utils.consts import index_list_analysis
 from utils.csv_utils import get_stock_code_list_by_industry
 from utils.stock_utils import stock_code_list_by_industry_in_constituent, get_code_name
 
+predict_thresholds = [0.10, 0.05]
+predict_days = [6, 15]
+predict_types = ["max", "average"]
+days = 30
+
 
 def validate_model():
-    predict_thresholds = [0.05]
-    predict_days = [15]
-    predict_types = ["max"]
-    val_days = 30
-    model, _, _, _, param = load("20200906-213432-94.1-50.5-model")
+
+    model, _, _, _, _, param = load("20200906-232435-87.1-56.2-model")
     industry_list = param.get_industry_list()
     select_set = param.get_constituent()
 
@@ -24,7 +26,7 @@ def validate_model():
     print(all_stock_list)
     _validate_model_with_stock_list(model,
                                     stock_list=all_stock_list, index_list_analysis_in=index_list_analysis,
-                                    val_days=val_days,
+                                    val_days=0,
                                     predict_days_in=predict_days,
                                     thresholds_in=predict_thresholds,
                                     predict_type_in=predict_types)
@@ -32,7 +34,9 @@ def validate_model():
 
 def _validate_model_with_stock_list(model, stock_list, index_list_analysis_in,
                                     val_days,
-                                    predict_days_in, thresholds_in, predict_type_in):
+                                    predict_days_in,
+                                    thresholds_in,
+                                    predict_type_in):
 
     for stock in stock_list:
         try:
@@ -59,10 +63,10 @@ def _validate_model_with_stock_list(model, stock_list, index_list_analysis_in,
 def save_predict_result(code, model):
     x_test, y_test = construct_dataset_instantly(code, index_list_analysis,
                                                  predict_days=predict_days,
-                                                 predict_thresholds=thresholds,
-                                                 predict_types=predict_type,
-                                                 debug=True)
-    model, _, _, _, _ = load(model)
+                                                 predict_thresholds=predict_thresholds,
+                                                 predict_types=predict_types,
+                                                 debug=False)
+    model, _, _, _, _, _ = load(model)
     y_prediction = predict(model, x_test)
     y = y_prediction.cpu().numpy()
     y = pandas.DataFrame(y)

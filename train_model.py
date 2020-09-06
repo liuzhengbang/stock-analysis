@@ -12,11 +12,11 @@ predict_types = ["max", "average"]
 
 
 def train():
-    industry_list = ["银行"]
-    constituent_list = []
+    industry_list = ["电子"]
+    constituent_list = ["hs300"]
     stock_list = stock_code_list_by_industry_in_constituent(industry_list, constituent_list)
-    print(stock_list)
-    test_list = ["sh.600000"]
+    print("stock list:", stock_list)
+    test_list = ["sz.002008"]
     stock_list.remove(test_list[0])
     index_code_list = index_list_analysis
 
@@ -43,9 +43,8 @@ def train():
                           val_date_list=val_date_list,
                           predict_days=predict_days, predict_thresholds=predict_thresholds, predict_types=predict_types)
     train_model(train_dataset, val_dataset, x_test, y_test, param, batch_size=10000,
-                prev_model=None,
                 num_iterations=10000, learning_rate=0.00001, weight=1, print_cost=True)
 
 
-
 train()
+# continue_train("", 10000)

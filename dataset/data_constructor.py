@@ -31,7 +31,7 @@ class DataException(Exception):
 def construct_dataset_instantly(code, index_code_list, predict_days, predict_thresholds, predict_types,
                                 val_days=0,
                                 history_list=None,
-                                debug=True):
+                                debug=False):
     if history_list is None:
         history_list = default_rolling_days
 
@@ -55,7 +55,7 @@ def construct_dataset_instantly(code, index_code_list, predict_days, predict_thr
 def construct_dataset_to_csv(code, index_code_list, predict_days, predict_thresholds, predict_types,
                              history_list=None,
                              val_date_list=None,
-                             debug=True):
+                             debug=False):
     if history_list is None:
         history_list = default_rolling_days
     if val_date_list is None:

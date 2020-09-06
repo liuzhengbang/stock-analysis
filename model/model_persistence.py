@@ -67,8 +67,8 @@ def save(model, param, epoch, optimizer, batch_size, loss,
          test_accuracy, test_precision, test_recall, test_f1):
     str_time = time.strftime('%Y%m%d-%H%M%S', time.localtime(time.time()))
     persistence_file_name = str_time + "-" + "%.1f" % val_accuracy \
-                                     + "-" + "%.1f" % val_precision \
-                                     + "-model"
+                            + "-" + "%.1f" % val_precision \
+                            + "-model"
     print("save model as:", persistence_file_name)
 
     torch.save({
@@ -103,9 +103,13 @@ def load(path):
     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
     epoch = checkpoint['epoch']
     loss = checkpoint['loss']
-    print("load model from", path, "type", param.industry_list, "total iterations", checkpoint['epoch'])
-    print("model predict days", param.predict_days, "threshold", param.thresholds, "predict type", param.predict_type)
+    batch_size = checkpoint['batch_size']
+
     try:
+        print("load model from", path, "type", param.industry_list, "total iterations", checkpoint['epoch'])
+        print("model predict days", param.predict_days,
+              "threshold", param.predict_thresholds,
+              "predict type", param.predict_types)
         val_accuracy = checkpoint['val_accuracy']
         val_precision = checkpoint['val_precision']
         val_recall = checkpoint['val_recall']
@@ -114,8 +118,10 @@ def load(path):
               .format(loss.item(), val_accuracy, val_precision, val_recall, val_f1))
     except KeyError:
         print("failed to get validation checkpoint")
+    except AttributeError:
+        print("failed to get param")
 
-    return model, optimizer, epoch, loss, param
+    return model, optimizer, epoch, loss, batch_size, param
 
 
 def get_prediction_from_param(param):
@@ -136,5 +142,5 @@ def get_prediction_from_param(param):
             ret = ret + "avg price will be [" + threshold + "] lower in [" + day + "] days"
 
         if i != len(predict_days) - 1:
-            ret = ret + ","
+            ret = ret + ", "
     return ret

@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 
-from dataset.data_constructor import construct_temp_csv_data, load_dataset
+from dataset.data_constructor import construct_temp_csv_data, load_dataset, construct_dataset_instantly
 from model.model_persistence import save, load
 from model.net import NeuralNetwork as Net
 from torch.utils.data.dataset import Dataset
@@ -60,7 +60,44 @@ class ValidationDataset(Dataset):
         return self.length
 
 
-def train_model(train_dataset, val_dataset, x_test, y_test, param, prev_model=None,
+def continue_train(model_name, num_iterations, print_cost=True, weight=1):
+    start_time = datetime.now()
+    print("start continue training", start_time.strftime("%Y-%m-%d-%H-%M-%S"))
+
+    model, optimizer, epoch_prev, loss, batch_size, param_prev = load(model_name)
+    predict_days, predict_thresholds, predict_types = param_prev.get_predict_param()
+    test_list = param_prev.get_test_stock_list()
+    x_test, y_test = construct_dataset_instantly(test_list[0],
+                                                 index_code_list=param_prev.get_index_code_list(),
+                                                 predict_days=predict_days,
+                                                 predict_thresholds=predict_thresholds,
+                                                 predict_types=predict_types)
+
+    construct_temp_csv_data(param_prev.get_training_stock_list(),
+                            index_code_list=param_prev.get_index_code_list(),
+                            predict_days=predict_days,
+                            thresholds=predict_thresholds,
+                            predict_type=predict_types,
+                            val_date_list=param_prev.get_val_date_list())
+
+    train_pos_data, train_neg_data, val_pos_data, val_neg_data = load_dataset()
+    train_dataset = TrainingDataset(train_pos_data, train_neg_data)
+    val_dataset = ValidationDataset(val_pos_data, val_neg_data)
+    loader = DataLoader(train_dataset, batch_size=batch_size, num_workers=0, shuffle=False)
+    val_loader = DataLoader(val_dataset, batch_size=20000, num_workers=0, shuffle=False)
+
+    _train(model, loader, val_loader, batch_size, epoch_prev, loss, num_iterations, optimizer, param_prev, print_cost,
+           val_dataset, weight, x_test, y_test)
+
+    end_time = datetime.now()
+    time_delta = end_time - start_time
+    print("continue training finished in", round(time_delta.seconds / 60 / 60, 3), "hours, ended at",
+          end_time.strftime("%Y-%m-%d-%H-%M-%S"))
+
+    return model
+
+
+def train_model(train_dataset, val_dataset, x_test, y_test, param,
                 batch_size=2000,
                 num_iterations=2000, learning_rate=0.9,
                 weight=1,
@@ -70,40 +107,32 @@ def train_model(train_dataset, val_dataset, x_test, y_test, param, prev_model=No
     loader = DataLoader(train_dataset, batch_size=batch_size, num_workers=0, shuffle=False)
     val_loader = DataLoader(val_dataset, batch_size=20000, num_workers=0, shuffle=False)
 
-    if prev_model is not None:
-        model, optimizer, epoch_prev, loss, param_prev = load(prev_model)
-        param.set_net_input_size(param_prev.get_net_input_size())
-        param.set_net_layers(param_prev.get_net_layers())
-        predict_days, predict_thresholds, predict_types = param_prev.get_predict_param()
+    input_size = x_test.shape[1]
+    net_param = [3000, 300]
+    model = Net(input_size, net_param).to(device=device)
+    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+    epoch_prev = 0
+    loss = -1
+    param.set_net_input_size(input_size)
+    param.set_net_layers(net_param)
 
-        construct_temp_csv_data(param_prev.get_training_stock_list(),
-                                index_code_list=param_prev.get_index_code_list,
-                                predict_days=predict_days,
-                                thresholds=predict_thresholds,
-                                predict_type=predict_types,
-                                val_date_list=param_prev.get_val_date_list())
+    _train(model, loader, val_loader, batch_size, epoch_prev, loss, num_iterations, optimizer, param, print_cost,
+           val_dataset, weight, x_test, y_test)
 
-        train_pos_data, train_neg_data, val_pos_data, val_neg_data = load_dataset()
-        train_dataset = TrainingDataset(train_pos_data, train_neg_data)
-        val_dataset = ValidationDataset(val_pos_data, val_neg_data)
-        loader = DataLoader(train_dataset, batch_size=batch_size, num_workers=0, shuffle=False)
-        val_loader = DataLoader(val_dataset, batch_size=20000, num_workers=0, shuffle=False)
+    end_time = datetime.now()
+    time_delta = end_time - start_time
+    print("training finished in", round(time_delta.seconds / 60 / 60, 3), "hours, ended at",
+          end_time.strftime("%Y-%m-%d-%H-%M-%S"))
 
-    else:
-        input_size = x_test.shape[1]
-        net_param = [3000, 300]
-        model = Net(input_size, net_param).to(device=device)
-        optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
-        epoch_prev = 0
-        loss = -1
-        param.set_net_input_size(input_size)
-        param.set_net_layers(net_param)
+    return model
 
+
+def _train(model, loader, val_loader, batch_size, epoch_prev, loss, num_iterations, optimizer, param, print_cost,
+           val_dataset, weight, x_test, y_test):
     pos_weight = torch.tensor([weight]).to(device)
     criterion = nn.BCEWithLogitsLoss(weight=pos_weight)
     epoch = 0
     max_precision = 20
-
     # Training the Model
     for epoch in range(num_iterations):
         for i, (x, y) in enumerate(loader):
@@ -131,7 +160,7 @@ def train_model(train_dataset, val_dataset, x_test, y_test, param, prev_model=No
                         x_val = x_val.to(device).float()
                         y_val = y_val.to(device).float()
 
-                        temp_val_accuracy, temp_val_precision, temp_val_recall, temp_val_f1\
+                        temp_val_accuracy, temp_val_precision, temp_val_recall, temp_val_f1 \
                             = validate(model, x_val, y_val)
                         val_accuracy = val_accuracy + temp_val_accuracy * len(x_val) / len(val_dataset)
                         val_precision = val_precision + temp_val_precision * len(x_val) / len(val_dataset)
@@ -150,19 +179,11 @@ def train_model(train_dataset, val_dataset, x_test, y_test, param, prev_model=No
                          test_accuracy, test_precision, test_recall, test_f1)
                     if val_precision > max_precision:
                         max_precision = val_precision
-
     test_accuracy, test_precision, test_recall, test_f1 = validate(model, x_test, y_test)
     print("Test Dataset Accuracy:", test_accuracy, "Precision:", test_precision, "Recall:", test_recall)
     save(model, param, epoch + epoch_prev + 1, optimizer, batch_size, loss,
          val_accuracy, val_precision, val_recall, val_f1,
          test_accuracy, test_precision, test_recall, test_f1)
-
-    end_time = datetime.now()
-    time_delta = end_time - start_time
-    print("training finished in", round(time_delta.seconds / 60 / 60, 3), "hours, ended at",
-          end_time.strftime("%Y-%m-%d-%H-%M-%S"))
-
-    return model
 
 
 def predict(module, source):
@@ -227,7 +248,7 @@ def validate(module, source, y_test):
         accuracy = (tp + tn) / (tp + tn + fp + fn)
 
     if (recall + precision) != 0:
-        f1 = 2 * recall * precision/(recall + precision)
+        f1 = 2 * recall * precision / (recall + precision)
     else:
         f1 = 0
 
