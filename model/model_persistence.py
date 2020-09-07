@@ -61,6 +61,10 @@ class TrainingParam(object):
     def get_val_date_list(self):
         return self.val_date_list
 
+    def set_val_date_list(self, date_list):
+        self.val_date_list = date_list
+
+
 
 def save(model, param, epoch, optimizer, batch_size, loss,
          val_accuracy, val_precision, val_recall, val_f1,

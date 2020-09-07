@@ -9,15 +9,15 @@ from utils.consts import index_list_analysis
 from utils.csv_utils import get_stock_code_list_by_industry
 from utils.stock_utils import stock_code_list_by_industry_in_constituent, get_code_name
 
-predict_thresholds = [0.10, 0.05]
-predict_days = [6, 15]
-predict_types = ["max", "average"]
+predict_thresholds = [0.05]
+predict_days = [15]
+predict_types = ["max"]
 days = 30
 
 
 def validate_model():
 
-    model, _, _, _, _, param = load("20200906-232435-87.1-56.2-model")
+    model, _, _, _, _, param = load("20200907-232237-83.0-43.6-model")
     industry_list = param.get_industry_list()
     select_set = param.get_constituent()
 
@@ -26,7 +26,7 @@ def validate_model():
     print(all_stock_list)
     _validate_model_with_stock_list(model,
                                     stock_list=all_stock_list, index_list_analysis_in=index_list_analysis,
-                                    val_days=0,
+                                    val_days=days,
                                     predict_days_in=predict_days,
                                     thresholds_in=predict_thresholds,
                                     predict_type_in=predict_types)
@@ -56,7 +56,7 @@ def _validate_model_with_stock_list(model, stock_list, index_list_analysis_in,
             else:
                 positive_sample = 0
             print("stock {} {}: total sample {}, positive sample {}, accuracy {:.2f}%, precision {:.2f}%, "
-                  "recall {:.2f}% f1 {:.2f}% "
+                  "recall {:.2f}%, f1 {:.2f}% "
                   .format(stock, code_name, len(x_test), positive_sample, accuracy, precision, recall, f1))
 
 
