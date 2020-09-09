@@ -84,8 +84,8 @@ def continue_train(model_name, num_iterations, print_cost=True, weight=1):
     train_pos_data, train_neg_data, val_pos_data, val_neg_data = load_dataset()
     train_dataset = TrainingDataset(train_pos_data, train_neg_data)
     val_dataset = ValidationDataset(val_pos_data, val_neg_data)
-    loader = DataLoader(train_dataset, batch_size=batch_size, num_workers=0, shuffle=False)
-    val_loader = DataLoader(val_dataset, batch_size=20000, num_workers=0, shuffle=False)
+    loader = DataLoader(train_dataset, batch_size=batch_size, num_workers=0, shuffle=True)
+    val_loader = DataLoader(val_dataset, batch_size=20000, num_workers=0, shuffle=True)
 
     _train(model, loader, val_loader, batch_size, epoch_prev, loss, num_iterations, optimizer, param_prev, print_cost,
            val_dataset, weight, x_test, y_test)
@@ -105,8 +105,8 @@ def train_model(train_dataset, val_dataset, x_test, y_test, param,
                 print_cost=False):
     start_time = datetime.now()
     print("start training", start_time.strftime("%Y-%m-%d-%H-%M-%S"))
-    loader = DataLoader(train_dataset, batch_size=batch_size, num_workers=0, shuffle=False)
-    val_loader = DataLoader(val_dataset, batch_size=20000, num_workers=0, shuffle=False)
+    loader = DataLoader(train_dataset, batch_size=batch_size, num_workers=0, shuffle=True)
+    val_loader = DataLoader(val_dataset, batch_size=20000, num_workers=0, shuffle=True)
 
     input_size = x_test.shape[1]
     net_param = [3000, 300]

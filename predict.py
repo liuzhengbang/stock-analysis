@@ -7,10 +7,23 @@ from utils.csv_utils import get_stock_code_list_by_industry
 from dataset.data_constructor import DataException
 from utils.stock_utils import get_code_name, stock_code_list_by_industry_in_constituent
 
-model, _, _, _, _, param = load("20200906-233130-87.2-56.6-model")
+
+def predict_stock_list():
+    model_list = [
+        "20200907-050903-87.2-56.9-model@ele_hs300-pos",
+        "20200908-190122-85.1-52.1-model@ele_hs300zz500-pos",
+        "20200908-224657-72.5-56.5-model@ele_hs300zz500-neg",
+        "20200907-202358-98.6-66.7-model@bank-pos",
+        "20200908-230852-96.6-61.0-model@sz50-pos",
+        "20200909-061343-98.0-84.0-model@sz50-pos"
+    ]
+    for model in model_list:
+        predict_stocks(model)
+        print("")
 
 
-def predict_stocks(model_loaded, industry_list=None, select_set=None):
+def predict_stocks(model_name, industry_list=None, select_set=None):
+    model, _, _, _, _, param = load(model_name)
     print(get_prediction_from_param(param))
 
     if industry_list is None:
@@ -25,12 +38,13 @@ def predict_stocks(model_loaded, industry_list=None, select_set=None):
             data_x, recent_date = construct_predict_data(stock, index_list_analysis)
         except DataException:
             continue
-        ret, prob = predict_with_prob(model_loaded, data_x)
+        ret, prob = predict_with_prob(model, data_x)
         code_name = get_code_name(stock)
         if ret == 1.0:
             print(stock, code_name, ":", ret, "with prob", prob, "on", recent_date)
-        else:
-            print(stock, code_name, ":", ret, "with prob", prob, "on", recent_date)
+        # else:
+        #     print(stock, code_name, ":", ret, "with prob", prob, "on", recent_date)
 
 
-predict_stocks(model)
+# predict_stocks("20200908-235826-79.3-35.2-model")
+predict_stock_list()

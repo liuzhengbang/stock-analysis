@@ -6,17 +6,17 @@ from dataset.data_constructor import construct_dataset_instantly, construct_temp
 from model.trainer import train_model, TrainingDataset, ValidationDataset, continue_train
 from utils.stock_utils import get_code_name_list, stock_code_list_by_industry_in_constituent
 
-predict_thresholds = [0.10, 0.05]
-predict_days = [6, 15]
+predict_thresholds = [0.3, 0.15]
+predict_days = [30, 30]
 predict_types = ["max", "average"]
 
 
 def train():
-    industry_list = ["电子"]
-    constituent_list = ["hs300"]
+    industry_list = ["银行"]
+    constituent_list = []
     stock_list = stock_code_list_by_industry_in_constituent(industry_list, constituent_list)
     print("stock list:", stock_list)
-    test_list = ["sz.002008"]
+    test_list = ["sh.600000"]
     stock_list.remove(test_list[0])
     index_code_list = index_list_analysis
 
@@ -27,7 +27,7 @@ def train():
                                                  predict_days=predict_days,
                                                  predict_thresholds=predict_thresholds,
                                                  predict_types=predict_types)
-    val_date_list = generate_val_data(20000, val_recent_days=30, val_frac=0.2)
+    val_date_list = generate_val_data(20000, val_recent_days=60, val_frac=0.2)
     construct_temp_csv_data(stock_list,
                             index_code_list=index_code_list,
                             predict_days=predict_days,
@@ -47,4 +47,4 @@ def train():
 
 
 train()
-# continue_train("", 10000)
+# continue_train("20200907-234633-84.5-48.4-model@ele", 10000)

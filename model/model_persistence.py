@@ -65,7 +65,6 @@ class TrainingParam(object):
         self.val_date_list = date_list
 
 
-
 def save(model, param, epoch, optimizer, batch_size, loss,
          val_accuracy, val_precision, val_recall, val_f1,
          test_accuracy, test_precision, test_recall, test_f1):
@@ -73,7 +72,7 @@ def save(model, param, epoch, optimizer, batch_size, loss,
     persistence_file_name = str_time + "-" + "%.1f" % val_accuracy \
                             + "-" + "%.1f" % val_precision \
                             + "-model"
-    print("save model as:", persistence_file_name)
+    print("save model as:\033[35m", persistence_file_name, "\033[0m")
 
     torch.save({
         'epoch': epoch,
@@ -110,7 +109,9 @@ def load(path):
     batch_size = checkpoint['batch_size']
 
     try:
-        print("load model from", path, "type", param.industry_list, "total iterations", checkpoint['epoch'])
+        print("load model from", path, "industry\033[33m", param.industry_list,
+              "\033[0m constituent list\033[33m", param.constituent_list,
+              "\033[0m total iterations", checkpoint['epoch'])
         print("model predict days", param.predict_days,
               "threshold", param.predict_thresholds,
               "predict type", param.predict_types)
@@ -137,13 +138,15 @@ def get_prediction_from_param(param):
         threshold = str(thresholds[i] * 100) + "%"
         day = str(predict_days[i])
         if thresholds[i] >= 0 and predict_type[i] == "max":
-            ret = ret + "raise to highest [" + threshold + "] in [" + day + "] days"
+            ret = ret + "raise to highest [\033[31m" + threshold + "\033[0m] in [\033[31m" + day + "\033[0m] days"
         elif thresholds[i] < 0 and predict_type[i] == "max":
-            ret = ret + "drop to lowest [" + threshold + "] in [" + day + "] days"
+            ret = ret + "drop to lowest [\033[32m" + threshold + "\033[0m] in [\033[32m" + day + "\033[0m] days"
         elif thresholds[i] >= 0 and predict_type[i] == "average":
-            ret = ret + "avg price will be [" + threshold + "] higher in [" + day + "] days"
+            ret = ret + "avg price will be [\033[31m" + threshold + "\033[0m]" \
+                                                                    " higher in [\033[31m" + day + "\033[0m] days"
         elif thresholds[i] < 0 and predict_type[i] == "average":
-            ret = ret + "avg price will be [" + threshold + "] lower in [" + day + "] days"
+            ret = ret + "avg price will be [\033[32m" + threshold + "\033[0m]" \
+                                                                    " lower in [\033[32m" + day + "\033[0m] days"
 
         if i != len(predict_days) - 1:
             ret = ret + ", "
