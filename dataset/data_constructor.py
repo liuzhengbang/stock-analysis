@@ -38,13 +38,12 @@ def construct_dataset_instantly(code, index_code_list, predict_days, predict_thr
     csv_data, title_list = _prepare_dataset(code, history_list, index_code_list, predict_days,
                                             predict_thresholds, predict_types)
 
-    if debug:
-        csv_data.to_csv("temp/" + code + "_temp.csv")
-
     if val_days != 0:
         csv_data['date'] = pd.to_datetime(csv_data['date'], format='%Y-%m-%d')
         split_date = datetime.today() + timedelta(days=-val_days)
         csv_data = (csv_data[(csv_data.date >= split_date)])
+    if debug:
+        csv_data.to_csv("temp/" + code + "_temp.csv")
 
     dataset_x = pd.DataFrame(csv_data, columns=title_list)
     dataset_y = pd.DataFrame(csv_data, columns=['result'])
@@ -236,26 +235,26 @@ def _add_max_lower_prediction(csv_data, index, days, threshold):
 
 
 def _add_average_higher_prediction(csv_data, index, days, threshold):
-    csv_data['avg_chg_' + str(days)] = \
+    csv_data['avg_h_chg_' + str(days)] = \
         (csv_data['close'].rolling(days).mean().shift(-days) - csv_data['close']) / csv_data['close']
     if index == 0:
         csv_data['result'] = csv_data.apply(
-            lambda x: 1.0 if x['avg_chg_' + str(days)] > threshold else 0.0, axis=1)
+            lambda x: 1.0 if x['avg_h_chg_' + str(days)] > threshold else 0.0, axis=1)
     else:
         csv_data['result'] = csv_data.apply(
-            lambda x: 1.0 if (x['avg_chg_' + str(days)] > threshold and x['result'] == 1.0)
+            lambda x: 1.0 if (x['avg_h_chg_' + str(days)] > threshold and x['result'] == 1.0)
             else 0.0, axis=1)
 
 
 def _add_average_lower_prediction(csv_data, index, days, threshold):
-    csv_data['avg_chg_' + str(days)] = \
+    csv_data['avg_l_chg_' + str(days)] = \
         (csv_data['close'].rolling(days).mean().shift(-days) - csv_data['close']) / csv_data['close']
     if index == 0:
         csv_data['result'] = csv_data.apply(
-            lambda x: 1.0 if x['avg_chg_' + str(days)] < threshold else 0.0, axis=1)
+            lambda x: 1.0 if x['avg_l_chg_' + str(days)] < threshold else 0.0, axis=1)
     else:
         csv_data['result'] = csv_data.apply(
-            lambda x: 1.0 if (x['avg_chg_' + str(days)] < threshold and x['result'] == 1.0)
+            lambda x: 1.0 if (x['avg_l_chg_' + str(days)] < threshold and x['result'] == 1.0)
             else 0.0, axis=1)
 
 
