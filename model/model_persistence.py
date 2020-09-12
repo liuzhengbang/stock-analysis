@@ -119,7 +119,8 @@ def load(path):
         val_precision = checkpoint['val_precision']
         val_recall = checkpoint['val_recall']
         val_f1 = checkpoint['val_f1']
-        print("with loss {:.2f}, val accuracy {:.2f}, val precision {:.2f}, val recall {:.2f} val_f1 {:.2f}"
+        print("with loss [{:.2f}],"
+              " val accuracy [{:.2f}%], val precision [{:.2f}%], val recall [{:.2f}%], val_f1 [{:.2f}%]"
               .format(loss.item(), val_accuracy, val_precision, val_recall, val_f1))
     except KeyError:
         print("failed to get validation checkpoint")

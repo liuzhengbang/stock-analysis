@@ -1,7 +1,7 @@
 import os
 import unittest
 
-from dataset.data_constructor import construct_dataset_instantly, construct_dataset_to_csv
+from dataset.data_constructor import construct_dataset_to_csv
 from utils.csv_utils import *
 
 
@@ -230,3 +230,5 @@ class TestConstructDataset(unittest.TestCase):
                                   'open_index_test', 'high_index_test', 'low_index_test',
                                   'close_index_test', 'volume_index_test', 'amount_index_test',
                                   'pctChg_2', 'volume_2', 'ma_2', 'highest_2', 'lowest_2', 'peTTM_2', 'pbMRQ_2'])
+
+

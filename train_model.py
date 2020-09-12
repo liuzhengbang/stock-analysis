@@ -6,14 +6,14 @@ from dataset.data_constructor import construct_dataset_instantly, construct_temp
 from model.trainer import train_model, TrainingDataset, ValidationDataset, continue_train
 from utils.stock_utils import get_code_name_list, stock_code_list_by_industry_in_constituent
 
-predict_thresholds = [0.3, 0.15]
-predict_days = [30, 30]
+predict_thresholds = [0.5, 0.3]
+predict_days = [40, 40]
 predict_types = ["max", "average"]
 
 
 def train():
-    industry_list = ["ÒøĞĞ"]
-    constituent_list = []
+    industry_list = []
+    constituent_list = ["hs300"]
     stock_list = stock_code_list_by_industry_in_constituent(industry_list, constituent_list)
     print("stock list:", stock_list)
     test_list = ["sh.600000"]
@@ -46,5 +46,5 @@ def train():
                 num_iterations=10000, learning_rate=0.00001, weight=1, print_cost=True)
 
 
-train()
-# continue_train("20200907-234633-84.5-48.4-model@ele", 10000)
+# train()
+continue_train("20200907-202358-98.6-66.7-model@bank-pos", 10000)

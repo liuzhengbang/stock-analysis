@@ -12,15 +12,15 @@ from utils.stock_utils import stock_code_list_by_industry_in_constituent, get_co
 
 
 def validate_model():
-    predict_thresholds = [0.1, 0.05]
-    predict_days = [6, 15]
+    predict_thresholds = [0.2, 0.1]
+    predict_days = [40, 40]
     predict_types = ["max", "average"]
-    days = 100
+    days = 62
 
-    model, _, _, _, _, param = load("20200909-061343-98.0-84.0-model@sz50-pos")
-    predict_days = param.predict_days
-    predict_thresholds = param.predict_thresholds
-    predict_types = param.predict_types
+    model, _, _, _, _, param = load("20200912-183550-98.6-54.0-model@hs300-pos")
+    # predict_days = param.predict_days
+    # predict_thresholds = param.predict_thresholds
+    # predict_types = param.predict_types
 
     industry_list = param.get_industry_list()
     select_set = param.get_constituent()
@@ -115,5 +115,5 @@ def save_predict_result(code, model):
     data.to_csv("temp/" + code + "_temp.csv", index=False)
 
 
-save_predict_result("sh.600196", "20200909-061343-98.0-84.0-model@sz50-pos")
+save_predict_result("sh.601808", "20200912-183550-98.6-54.0-model@hs300-pos")
 # validate_model()

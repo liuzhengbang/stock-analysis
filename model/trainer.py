@@ -9,7 +9,7 @@ from model.model_persistence import save, load
 from model.net import NeuralNetwork as Net
 from torch.utils.data.dataset import Dataset
 
-from utils.consts import device
+from utils.consts import device, DATE_FORMAT
 
 
 class TrainingDataset(Dataset):
@@ -261,16 +261,35 @@ def _complete_val_date_list(val_list):
     today = datetime.today()
     recent_date = today
     for date_str in val_list:
-        val_date = datetime.strptime(date_str, "%Y-%m-%d")
+        val_date = datetime.strptime(date_str, DATE_FORMAT)
         delta_temp = today - val_date
         if delta_temp < delta:
             delta = delta_temp
             recent_date = val_date
 
-    print("most recent validation date is", recent_date)
-    for i in range((today - recent_date).days):
+    print("most recent validation date is", recent_date.strftime(DATE_FORMAT))
+    days_delta = (today - recent_date).days
+
+    for i in range(days_delta):
         date = datetime.today() + timedelta(days=-i)
-        val_list.append(date.strftime('%Y-%m-%d'))
-        print("add", date.strftime('%Y-%m-%d'), "to validation list")
+        val_list.append(date.strftime(DATE_FORMAT))
+        print("add", date.strftime(DATE_FORMAT), "to validation list")
+
+    val_length = 1
+    for i in range(len(val_list)):
+        date = datetime.today() + timedelta(days=-i)
+        date_str = date.strftime(DATE_FORMAT)
+        if date_str not in val_list:
+            val_length = i
+            break
+    val_length = val_length - 1
+    print("validation length is", val_length - days_delta)
+
+    for i in range(days_delta):
+        date = datetime.today() + timedelta(days=-val_length+i)
+        date_str = date.strftime(DATE_FORMAT)
+        if date_str in val_list:
+            val_list.remove(date_str)
+            print("remove", date_str, "from validation list")
 
     return val_list

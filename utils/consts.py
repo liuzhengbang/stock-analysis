@@ -1,5 +1,6 @@
 import torch
 device = torch.device('cuda:0')
+DATE_FORMAT = "%Y-%m-%d"
 index_list_analysis = ["sh.000001",  # 上证指数
                        # "sz.399106",  # 深证综指
                        "sh.000016",  # 上证50

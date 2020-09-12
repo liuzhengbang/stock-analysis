@@ -16,7 +16,8 @@ def predict_stock_list():
         "20200907-202358-98.6-66.7-model@bank-pos",
         "20200909-215434-98.4-71.9-model@bank-pos",
         "20200908-230852-96.6-61.0-model@sz50-pos",
-        "20200909-061343-98.0-84.0-model@sz50-pos"
+        "20200909-061343-98.0-84.0-model@sz50-pos",
+        "20200912-183550-98.6-54.0-model@hs300-pos"
     ]
     for model in model_list:
         predict_stocks(model)
@@ -47,5 +48,5 @@ def predict_stocks(model_name, industry_list=None, select_set=None):
         #     print(stock, code_name, ":", ret, "with prob", prob, "on", recent_date)
 
 
-# predict_stocks("20200909-061343-98.0-84.0-model@sz50-pos")
-predict_stock_list()
+predict_stocks("20200912-180913-98.6-52.2-model")
+# predict_stock_list()
