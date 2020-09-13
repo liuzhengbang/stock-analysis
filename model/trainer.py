@@ -10,6 +10,7 @@ from model.net import NeuralNetwork as Net
 from torch.utils.data.dataset import Dataset
 
 from utils.consts import device, DATE_FORMAT
+from utils.stock_utils import complete_val_date_list
 
 
 class TrainingDataset(Dataset):
@@ -67,7 +68,7 @@ def continue_train(model_name, num_iterations, print_cost=True, weight=1):
     model, optimizer, epoch_prev, loss, batch_size, param_prev = load(model_name)
     predict_days, predict_thresholds, predict_types = param_prev.get_predict_param()
     test_list = param_prev.get_test_stock_list()
-    param_prev.set_val_date_list(_complete_val_date_list(param_prev.get_val_date_list()))
+    param_prev.set_val_date_list(complete_val_date_list(param_prev.get_val_date_list()))
     x_test, y_test = construct_dataset_instantly(test_list[0],
                                                  index_code_list=param_prev.get_index_code_list(),
                                                  predict_days=predict_days,
@@ -256,40 +257,4 @@ def validate(module, source, y_test):
     return accuracy * 100, precision * 100, recall * 100, f1 * 100
 
 
-def _complete_val_date_list(val_list):
-    delta = timedelta(days=365 * 10)
-    today = datetime.today()
-    recent_date = today
-    for date_str in val_list:
-        val_date = datetime.strptime(date_str, DATE_FORMAT)
-        delta_temp = today - val_date
-        if delta_temp < delta:
-            delta = delta_temp
-            recent_date = val_date
 
-    print("most recent validation date is", recent_date.strftime(DATE_FORMAT))
-    days_delta = (today - recent_date).days
-
-    for i in range(days_delta):
-        date = datetime.today() + timedelta(days=-i)
-        val_list.append(date.strftime(DATE_FORMAT))
-        print("add", date.strftime(DATE_FORMAT), "to validation list")
-
-    val_length = 1
-    for i in range(len(val_list)):
-        date = datetime.today() + timedelta(days=-i)
-        date_str = date.strftime(DATE_FORMAT)
-        if date_str not in val_list:
-            val_length = i
-            break
-    val_length = val_length - 1
-    print("validation length is", val_length - days_delta)
-
-    for i in range(days_delta):
-        date = datetime.today() + timedelta(days=-val_length+i)
-        date_str = date.strftime(DATE_FORMAT)
-        if date_str in val_list:
-            val_list.remove(date_str)
-            print("remove", date_str, "from validation list")
-
-    return val_list

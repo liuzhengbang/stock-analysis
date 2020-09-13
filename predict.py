@@ -48,5 +48,5 @@ def predict_stocks(model_name, industry_list=None, select_set=None):
         #     print(stock, code_name, ":", ret, "with prob", prob, "on", recent_date)
 
 
-predict_stocks("20200912-180913-98.6-52.2-model")
+predict_stocks("20200913-183210-96.3-60.6-model")
 # predict_stock_list()

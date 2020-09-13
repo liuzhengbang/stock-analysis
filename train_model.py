@@ -7,7 +7,7 @@ from model.trainer import train_model, TrainingDataset, ValidationDataset, conti
 from utils.stock_utils import get_code_name_list, stock_code_list_by_industry_in_constituent
 
 predict_thresholds = [0.5, 0.3]
-predict_days = [40, 40]
+predict_days = [80, 80]
 predict_types = ["max", "average"]
 
 
@@ -27,7 +27,7 @@ def train():
                                                  predict_days=predict_days,
                                                  predict_thresholds=predict_thresholds,
                                                  predict_types=predict_types)
-    val_date_list = generate_val_data(20000, val_recent_days=60, val_frac=0.2)
+    val_date_list = generate_val_data(20000, val_recent_days=110, val_frac=0.2)
     construct_temp_csv_data(stock_list,
                             index_code_list=index_code_list,
                             predict_days=predict_days,
@@ -46,5 +46,5 @@ def train():
                 num_iterations=10000, learning_rate=0.00001, weight=1, print_cost=True)
 
 
-# train()
-continue_train("20200907-202358-98.6-66.7-model@bank-pos", 10000)
+train()
+# continue_train("20200907-202358-98.6-66.7-model@bank-pos", 10000)
