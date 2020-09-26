@@ -12,12 +12,12 @@ from utils.stock_utils import stock_code_list_by_industry_in_constituent, get_co
     get_validation_length
 
 
-def validate_model(only_val_days=False):
+def validate_model(model, only_val_days=False):
     predict_thresholds = [0.2, 0.1]
     predict_days = [40, 40]
     predict_types = ["max", "average"]
 
-    model, _, _, _, _, param = load("20200913-185643-96.3-60.7-model")
+    model, _, _, _, _, param = load(model)
 
     if only_val_days:
         days = get_validation_length(param.get_val_date_list())
@@ -134,8 +134,9 @@ def _save_stock_predict_result(code, model, predict_days, predict_thresholds, pr
     plt.show()
 
 
-# save_predict_result(
-#     ["sh.601808", "sh.600000", "sh.600009", "sz.000066", "sz.000977", "sz.002371", "sz.002410", "sz.300413"],
-#     "20200913-183210-96.3-60.6-model",
-#     only_val_days=True)
-validate_model(only_val_days=True)
+save_predict_result(
+    ["sh.601808", "sh.600000", "sh.600009", "sz.000066", "sz.000977", "sz.002371", "sz.002410", "sz.300413"],
+    "20200916-213012-95.7-39.0-model",
+    only_val_days=True)
+# validate_model("20200916-213012-95.7-39.0-model", only_val_days=True)
+

@@ -6,7 +6,8 @@ import pandas as pd
 
 from utils.consts import device
 from utils.csv_utils import read_individual_csv, read_index_csv, delete_temp_data, save_temp_data, NEGATIVE_CSV, \
-    POSITIVE_CSV, VAL_POSITIVE_CSV, VAL_NEGATIVE_CSV, load_temp_data
+    POSITIVE_CSV, VAL_POSITIVE_CSV, VAL_NEGATIVE_CSV, load_temp_data, save_lstm_temp_data, \
+    LSTM_TRAINING_POSITIVE_CSV_DIR, LSTM_TRAINING_NEGATIVE_CSV_DIR
 from utils.stock_utils import get_code_name
 
 individual_cols_sel = ['open', 'close', 'amount', 'high', 'low', 'volume',
@@ -51,6 +52,19 @@ def construct_dataset_instantly(code, index_code_list, predict_days, predict_thr
     return df_to_tensor(dataset_x), df_to_tensor(dataset_y)
 
 
+def construct_lstm_dataset_to_csv(code, index_code_list, predict_days, predict_thresholds, predict_types,
+                                  history_length,
+                                  val_date_list=None,
+                                  debug=False):
+    # history length does not includes today, that 1 means data includes today and yesterday
+    if val_date_list is None:
+        val_date_list = []
+    csv_data, title_list = _prepare_dataset(code, None, index_code_list, predict_days,
+                                            predict_thresholds, predict_types)
+
+    _save_temp_lstm_data_to_csv_file(csv_data, title_list, history_length, val_date_list, debug=debug)
+
+
 def construct_dataset_to_csv(code, index_code_list, predict_days, predict_thresholds, predict_types,
                              history_list=None,
                              val_date_list=None,
@@ -69,7 +83,7 @@ def construct_dataset_to_csv(code, index_code_list, predict_days, predict_thresh
 
 
 def _prepare_dataset(code, history_list, index_code_list, predict_days, predict_thresholds, predict_types):
-    if len(history_list) != 0:
+    if history_list is not None and len(history_list) != 0:
         history_length = max(history_list)
     else:
         history_length = 1
@@ -83,7 +97,10 @@ def _prepare_dataset(code, history_list, index_code_list, predict_days, predict_
     if len(csv_data) <= max(predict_days):
         raise DataException(code)
     csv_data = csv_data.reset_index(drop=True)
-    csv_data = _append_history(csv_data, title_list, history_list)
+
+    if history_list is not None:
+        csv_data = _append_history(csv_data, title_list, history_list)
+
     csv_data = _append_predicts(csv_data, predict_days, predict_thresholds, predict_types)
     return csv_data, title_list
 
@@ -293,6 +310,44 @@ def _save_temp_data_to_csv_file(csv_data, title_list, val_list, debug=False):
     save_temp_data(neg_train_data, title_list, NEGATIVE_CSV)
     save_temp_data(pos_val_data, title_list, VAL_POSITIVE_CSV)
     save_temp_data(neg_val_data, title_list, VAL_NEGATIVE_CSV)
+
+
+def _save_temp_lstm_data_to_csv_file(csv_data, title_list, history_length, val_list, debug=False):
+    code = csv_data.code[0]
+    dataset_training = []
+    dataset_val = []
+    if len(csv_data) <= history_length:
+        print("bbb")
+        raise DataException(code)
+
+    for index, row in csv_data.iterrows():
+        if row['date'] in val_list:
+            dataset_val.append(row)
+        else:
+            dataset_training.append(row)
+    dataset_training = pd.DataFrame(dataset_training, columns=csv_data.columns)
+    dataset_val = pd.DataFrame(dataset_val, columns=csv_data.columns)
+    title_list.append("group")
+    pos_index = 0
+    neg_index = 0
+    dataset_training.to_csv("temp/test.csv")
+    for index, row in dataset_training.iterrows():
+        if index < history_length:
+            continue
+        temp_csv = csv_data.loc[index - history_length: index]
+
+        if row.result == 1.0:
+            print(pos_index)
+            temp_csv = temp_csv.assign(group=pos_index)
+            print(temp_csv)
+            pos_index = pos_index + 1
+            save_lstm_temp_data(temp_csv, title_list, code, LSTM_TRAINING_POSITIVE_CSV_DIR)
+        else:
+            print(neg_index, "aa")
+            temp_csv = temp_csv.assign(group=neg_index)
+            print(temp_csv)
+            neg_index = neg_index + 1
+            save_lstm_temp_data(temp_csv, title_list, code, LSTM_TRAINING_NEGATIVE_CSV_DIR)
 
 
 def construct_temp_csv_data(stock_list, index_code_list,

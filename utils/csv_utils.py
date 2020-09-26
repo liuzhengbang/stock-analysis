@@ -1,3 +1,4 @@
+import glob
 import os
 from datetime import datetime, timedelta
 from os.path import isfile
@@ -19,6 +20,11 @@ POSITIVE_CSV = TEMP_DIR_BASE + "positive.csv"
 NEGATIVE_CSV = TEMP_DIR_BASE + 'negative.csv'
 VAL_POSITIVE_CSV = TEMP_DIR_BASE + "val_positive.csv"
 VAL_NEGATIVE_CSV = TEMP_DIR_BASE + "val_negative.csv"
+
+LSTM_TRAINING_POSITIVE_CSV_DIR = TEMP_DIR_BASE + "lstm_pos_training" + "/"
+LSTM_TRAINING_NEGATIVE_CSV_DIR = TEMP_DIR_BASE + "lstm_neg_training" + "/"
+LSTM_VAL_POSITIVE_CSV_DIR = TEMP_DIR_BASE + "lstm_pos_val" + "/"
+LSTM_VAL_NEGATIVE_CSV_DIR = TEMP_DIR_BASE + "lstm_neg_val" + "/"
 
 
 # individual
@@ -161,6 +167,12 @@ def save_temp_data(csv_data, columns, file):
     csv_data.to_csv(file, columns=columns, mode="a", index=False, header=not is_exist)
 
 
+def save_lstm_temp_data(csv_data, columns, code, temp_dir):
+    file = temp_dir + code + ".csv"
+    is_exist = isfile(file)
+    csv_data.to_csv(file, columns=columns, mode="a", index=False, header=not is_exist)
+
+
 def load_temp_data(file):
     csv_data = pd.read_csv(file, dtype=float)
     return csv_data
@@ -179,3 +191,11 @@ def delete_temp_data():
     if isfile(VAL_NEGATIVE_CSV):
         print("delete validation negative temp csv file")
         os.remove(VAL_NEGATIVE_CSV)
+
+    files = glob.glob(LSTM_TRAINING_POSITIVE_CSV_DIR + "*")
+    for f in files:
+        os.remove(f)
+
+    files = glob.glob(LSTM_TRAINING_NEGATIVE_CSV_DIR + "*")
+    for f in files:
+        os.remove(f)
