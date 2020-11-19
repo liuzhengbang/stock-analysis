@@ -7,7 +7,8 @@ import pandas as pd
 from utils.consts import device
 from utils.csv_utils import read_individual_csv, read_index_csv, delete_temp_data, save_temp_data, NEGATIVE_CSV, \
     POSITIVE_CSV, VAL_POSITIVE_CSV, VAL_NEGATIVE_CSV, load_temp_data, save_lstm_temp_data, \
-    LSTM_TRAINING_POSITIVE_CSV_DIR, LSTM_TRAINING_NEGATIVE_CSV_DIR
+    LSTM_TRAINING_POSITIVE_CSV_DIR, LSTM_TRAINING_NEGATIVE_CSV_DIR, LSTM_VAL_POSITIVE_CSV_DIR, \
+    LSTM_VAL_NEGATIVE_CSV_DIR, LSTM_CSV_DIR, save_lstm_list_to_csv
 from utils.stock_utils import get_code_name
 
 individual_cols_sel = ['open', 'close', 'amount', 'high', 'low', 'volume',
@@ -62,7 +63,7 @@ def construct_lstm_dataset_to_csv(code, index_code_list, predict_days, predict_t
     csv_data, title_list = _prepare_dataset(code, None, index_code_list, predict_days,
                                             predict_thresholds, predict_types)
 
-    _save_temp_lstm_data_to_csv_file(csv_data, title_list, history_length, val_date_list, debug=debug)
+    return _save_temp_lstm_data_to_csv_file(csv_data, title_list, history_length, val_date_list)
 
 
 def construct_dataset_to_csv(code, index_code_list, predict_days, predict_thresholds, predict_types,
@@ -312,42 +313,48 @@ def _save_temp_data_to_csv_file(csv_data, title_list, val_list, debug=False):
     save_temp_data(neg_val_data, title_list, VAL_NEGATIVE_CSV)
 
 
-def _save_temp_lstm_data_to_csv_file(csv_data, title_list, history_length, val_list, debug=False):
+def _save_temp_lstm_data_to_csv_file(csv_data, title_list, history_length, val_list):
     code = csv_data.code[0]
     dataset_training = []
     dataset_val = []
     if len(csv_data) <= history_length:
-        print("bbb")
         raise DataException(code)
-
+    save_lstm_temp_data(csv_data, title_list, code, LSTM_CSV_DIR)
     for index, row in csv_data.iterrows():
         if row['date'] in val_list:
             dataset_val.append(row)
         else:
             dataset_training.append(row)
     dataset_training = pd.DataFrame(dataset_training, columns=csv_data.columns)
-    dataset_val = pd.DataFrame(dataset_val, columns=csv_data.columns)
-    title_list.append("group")
-    pos_index = 0
-    neg_index = 0
-    dataset_training.to_csv("temp/test.csv")
-    for index, row in dataset_training.iterrows():
-        if index < history_length:
-            continue
-        temp_csv = csv_data.loc[index - history_length: index]
 
-        if row.result == 1.0:
-            print(pos_index)
-            temp_csv = temp_csv.assign(group=pos_index)
-            print(temp_csv)
-            pos_index = pos_index + 1
-            save_lstm_temp_data(temp_csv, title_list, code, LSTM_TRAINING_POSITIVE_CSV_DIR)
-        else:
-            print(neg_index, "aa")
-            temp_csv = temp_csv.assign(group=neg_index)
-            print(temp_csv)
-            neg_index = neg_index + 1
-            save_lstm_temp_data(temp_csv, title_list, code, LSTM_TRAINING_NEGATIVE_CSV_DIR)
+    dataset_val = pd.DataFrame(dataset_val, columns=csv_data.columns)
+    pos_train_data = (dataset_training[(dataset_training.result == 1.0)])
+    neg_train_data = (dataset_training[(dataset_training.result == 0.0)])
+    pos_val_data = (dataset_val[(dataset_val.result == 1.0)])
+    neg_val_data = (dataset_val[(dataset_val.result == 0.0)])
+
+    pos_training_end_index_list = list(filter(lambda x: x >= history_length, pos_train_data.index.values))
+    pos_training_start_index_list = [x - history_length for x in pos_training_end_index_list]
+    save_lstm_list_to_csv(pos_training_start_index_list, pos_training_end_index_list,
+                          code, LSTM_TRAINING_POSITIVE_CSV_DIR)
+
+    neg_training_end_index_list = list(filter(lambda x: x >= history_length, neg_train_data.index.values))
+    neg_training_start_index_list = [x - history_length for x in neg_training_end_index_list]
+    save_lstm_list_to_csv(neg_training_start_index_list, neg_training_end_index_list,
+                          code, LSTM_TRAINING_NEGATIVE_CSV_DIR)
+
+    pos_val_end_index_list = list(filter(lambda x: x >= history_length, pos_val_data.index.values))
+    pos_val_start_index_list = [x - history_length for x in pos_val_end_index_list]
+    save_lstm_list_to_csv(pos_val_start_index_list, pos_val_end_index_list,
+                          code, LSTM_VAL_POSITIVE_CSV_DIR)
+
+    neg_val_end_index_list = list(filter(lambda x: x >= history_length, neg_val_data.index.values))
+    neg_val_start_index_list = [x - history_length for x in neg_val_end_index_list]
+    save_lstm_list_to_csv(neg_val_start_index_list, neg_val_end_index_list,
+                          code, LSTM_VAL_NEGATIVE_CSV_DIR)
+
+    return len(pos_training_end_index_list), len(neg_training_end_index_list), \
+           len(pos_val_end_index_list), len(neg_val_end_index_list)
 
 
 def construct_temp_csv_data(stock_list, index_code_list,
@@ -365,6 +372,35 @@ def construct_temp_csv_data(stock_list, index_code_list,
         except DataException:
             print(code, get_code_name(code), "not processed")
     print("total", total_stocks, "stocks constructed")
+
+
+def construct_temp_lstm_csv_data(stock_list, index_code_list,
+                                 predict_days, thresholds, predict_type,
+                                 val_date_list,
+                                 history_length):
+    delete_temp_data()
+    total_stocks = 0
+    train_pos_list = []
+    train_neg_list = []
+    val_pos_list = []
+    val_neg_list = []
+    for code in stock_list:
+        try:
+            tmp_train_pos_num, tmp_train_neg_num, tmp_val_pos_num, tmp_val_neg_num = \
+                construct_lstm_dataset_to_csv(code, index_code_list, val_date_list=val_date_list,
+                                              predict_days=predict_days, predict_thresholds=thresholds,
+                                              predict_types=predict_type,
+                                              history_length=history_length)
+            train_pos_list.append(tmp_train_pos_num)
+            train_neg_list.append(tmp_train_neg_num)
+            val_pos_list.append(tmp_val_pos_num)
+            val_neg_list.append(tmp_val_neg_num)
+            total_stocks = total_stocks + 1
+            print(code, get_code_name(code), "processed")
+        except DataException:
+            print(code, get_code_name(code), "not processed")
+    print("total", total_stocks, "stocks constructed")
+    return train_pos_list, train_neg_list, val_pos_list, val_neg_list
 
 
 def load_dataset():
